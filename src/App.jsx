@@ -85,6 +85,42 @@ const SEED_POSTS = [
   { id: "b3", title: "Caring for Your Human Hair Wig", date: "2026-04-18", cover: "💁🏾‍♀️", excerpt: "Keep your wig looking salon-fresh for longer with these simple care habits.",
     body: "A quality human-hair wig is an investment, and a little care keeps it gorgeous for months. Wash gently with sulphate-free shampoo every 7–10 wears, condition from mid-length to ends, and let it air-dry on a stand.\n\nStore it on a mannequin or in a silk bag to keep the style intact, and use heat tools sparingly with a heat protectant. Brush from the ends upward to avoid shedding.\n\nWith the right routine, your bone-straight or body-wave wig stays soft, shiny and natural-looking far longer." },
 ];
+const SEED_TEAM = [
+  { id: "t1", name: "Mohamed Ishmael Fofanah", role: "Founder & CEO", bio: "Visionary founder of PC Wears and the People's Choice brand, leading innovation, fashion, technology, and business growth.", phone: WA_NUMBER, email: "", social: "", image: null, active: true },
+  { id: "t2", name: "Mr Michael Kamara", role: "Head Fashion Designer", bio: "Leads the creative fashion design process, tailoring quality, custom outfit development, and production standards.", phone: "", email: "", social: "", image: null, active: true },
+  { id: "t3", name: "Mr Lamin Bangura", role: "Manager", bio: "Supports business operations, customer coordination, order management, production follow-up, and daily workflow.", phone: "", email: "", social: "", image: null, active: true },
+  { id: "t4", name: "Madam Haja Fatmata Fofanah", role: "Manager", bio: "Supports customer service, sales coordination, staff supervision, and business record keeping.", phone: "", email: "", social: "", image: null, active: true },
+];
+
+const ROLES = {
+  owner:   { label: "Owner / Admin", tabs: ["dashboard","customers","orders","products","inventory","team","blog","staff","settings"] },
+  manager: { label: "Manager",       tabs: ["dashboard","customers","orders","products","inventory","team","blog"] },
+  sales:   { label: "Sales Staff",   tabs: ["dashboard","customers","orders"] },
+  tailor:  { label: "Tailor / Production", tabs: ["dashboard","orders"] },
+  viewer:  { label: "Viewer",        tabs: ["dashboard","customers","orders"] },
+};
+const TAB_LABELS = { dashboard:"Dashboard", customers:"Customers", orders:"Orders", products:"Products", inventory:"Inventory", team:"Team", blog:"Blog", staff:"Staff", settings:"Settings" };
+
+const MEN_MEASURE = ["Shoulder","Chest","Waist","Hip","Sleeve length","Top length","Trouser waist","Trouser length","Thigh","Neck","Cap size"];
+const WOMEN_MEASURE = ["Bust","Waist","Hip","Shoulder","Sleeve length","Dress length","Blouse length","Skirt length","Trouser length"];
+
+const ORDER_STATUS = [["pending","Pending"],["in_progress","In Progress"],["ready","Ready"],["delivered","Delivered"],["cancelled","Cancelled"]];
+const ORDER_STATUS_COLOR = { pending: GOLD, in_progress: "#2980B9", ready: "#8E44AD", delivered: "#2E7D32", cancelled: "#C0392B" };
+const PAY_METHODS = ["Cash","Orange Money","Afrimoney","Bank Transfer","Other"];
+const PAY_TYPES = ["Full Payment","Half Payment","Deposit","Balance Payment"];
+
+const orderTotal = (o) => o.total != null && o.total !== "" ? Number(o.total) : (Number(o.price || 0) * Number(o.qty || 1) - Number(o.discount || 0));
+const orderPaid = (o) => Array.isArray(o.payments) && o.payments.length ? o.payments.reduce((s, p) => s + Number(p.amount || 0), 0) : Number(o.amountPaid || 0);
+const orderBalance = (o) => Math.max(0, orderTotal(o) - orderPaid(o));
+const payStatus = (o) => { const t = orderTotal(o), p = orderPaid(o); if (t > 0 && p >= t) return "Paid"; if (p > 0) return p >= t / 2 ? "Part Payment" : "Deposit"; return "Unpaid"; };
+const genId = (list, prefix) => prefix + "-" + String((list?.length || 0) + 1).padStart(4, "0");
+const csvEscape = (v) => `"${String(v == null ? "" : v).replace(/"/g, '""')}"`;
+function downloadCSV(filename, rows) {
+  const csv = rows.map((r) => r.map(csvEscape).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+}
+
 
 
 /* ============================================================
@@ -213,6 +249,12 @@ function SectionTitle({ eyebrow, title, dark, action }) {
 export default function App() {
   const [route, setRoute] = useState({ page: "home", productId: null });
   const [posts, setPosts] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [team, setTeam] = useState([]);
+  const [staff, setStaff] = useState([]);
+  const [fabrics, setFabrics] = useState([]);
+  const [role, setRole] = useState(null);
+  const [staffName, setStaffName] = useState("");
   const [products, setProducts] = useState(null);
   const [orders, setOrders] = useState([]);
   const [cart, setCart] = useState([]);
@@ -234,6 +276,12 @@ export default function App() {
       const bp = await sGet("pcw2:posts", null, true);
       if (bp && Array.isArray(bp) && bp.length) setPosts(bp);
       else { setPosts(SEED_POSTS); sSet("pcw2:posts", SEED_POSTS, true); }
+      setCustomers(await sGet("pcw2:customers", [], true));
+      setFabrics(await sGet("pcw2:fabrics", [], true));
+      const tm = await sGet("pcw2:team", null, true);
+      if (tm && Array.isArray(tm) && tm.length) setTeam(tm);
+      else { setTeam(SEED_TEAM); sSet("pcw2:team", SEED_TEAM, true); }
+      setStaff(await sGet("pcw2:staff", [], true));
       setCart(await sGet("pcw2:cart", [], false));
       setWishlist(await sGet("pcw2:wishlist", [], false));
       const pass = await sGet("pcw2:adminpass", null, true);
@@ -247,6 +295,10 @@ export default function App() {
   const saveCart = (n) => { setCart(n); sSet("pcw2:cart", n, false); };
   const saveWishlist = (n) => { setWishlist(n); sSet("pcw2:wishlist", n, false); };
   const savePosts = (n) => { setPosts(n); sSet("pcw2:posts", n, true); };
+  const saveCustomers = (n) => { setCustomers(n); sSet("pcw2:customers", n, true); };
+  const saveTeam = (n) => { setTeam(n); sSet("pcw2:team", n, true); };
+  const saveStaff = (n) => { setStaff(n); sSet("pcw2:staff", n, true); };
+  const saveFabrics = (n) => { setFabrics(n); sSet("pcw2:fabrics", n, true); };
 
   const go = (page, productId = null) => { setRoute({ page, productId }); setMenuOpen(false); setQuickView(null); window.scrollTo({ top: 0 }); };
   const showToast = (m) => { setToast(m); setTimeout(() => setToast(null), 2200); };
@@ -271,7 +323,7 @@ export default function App() {
     custom: "Hello PC Wears, I'd like to ask about a custom outfit.",
   }[route.page] || "Hello PC Wears, I'd like to make an inquiry.";
 
-  const pp = { products, saveProducts, orders, saveOrders, posts, savePosts, cart, saveCart, wishlist, toggleWish, go, addToCart, cartTotal, showToast, adminPass, setAdminPass, isAdmin, setIsAdmin, setQuickView };
+  const pp = { products, saveProducts, orders, saveOrders, posts, savePosts, customers, saveCustomers, team, saveTeam, staff, saveStaff, fabrics, saveFabrics, role, setRole, staffName, setStaffName, cart, saveCart, wishlist, toggleWish, go, addToCart, cartTotal, showToast, adminPass, setAdminPass, isAdmin, setIsAdmin, setQuickView };
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: CREAM, color: INK, fontFamily: "'Jost', sans-serif" }}>
@@ -283,6 +335,7 @@ export default function App() {
         @keyframes pcwFade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
         .pcw-rise { animation: pcwFade .5s ease both; }
         @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+        @media print { body * { visibility: hidden !important; } #pcw-print, #pcw-print * { visibility: visible !important; } #pcw-print { position: absolute; left: 0; top: 0; width: 100%; } .no-print { display: none !important; } }
       `}</style>
 
       {/* header */}
@@ -299,7 +352,7 @@ export default function App() {
             </span>
           </button>
           <nav className="hidden md:flex items-center gap-6 text-sm uppercase tracking-wider">
-            {[["home", "Home"], ["shop", "Shop"], ["cosmetics", "Cosmetics"], ["stylist", "Style AI"], ["blog", "Blog"], ["custom", "Custom Order"], ["about", "About"], ["contact", "Contact"]].map(([k, l]) => (
+            {[["home", "Home"], ["shop", "Shop"], ["cosmetics", "Cosmetics"], ["stylist", "Style AI"], ["blog", "Blog"], ["team", "Team"], ["custom", "Custom Order"], ["about", "About"], ["contact", "Contact"]].map(([k, l]) => (
               <button key={k} onClick={() => go(k)} style={{ color: route.page === k ? GOLD : CREAM }} className="hover:opacity-80">{l}</button>
             ))}
           </nav>
@@ -318,7 +371,7 @@ export default function App() {
         </div>
         {menuOpen && (
           <nav className="md:hidden flex flex-col px-4 pb-4 gap-1 text-sm uppercase tracking-wider" style={{ background: BLACK }}>
-            {[["home", "Home"], ["shop", "Shop"], ["cosmetics", "Cosmetics"], ["stylist", "Style AI"], ["blog", "Blog"], ["wishlist", "Wishlist"], ["custom", "Custom Order"], ["about", "About"], ["contact", "Contact"], ["admin", "Admin"]].map(([k, l]) => (
+            {[["home", "Home"], ["shop", "Shop"], ["cosmetics", "Cosmetics"], ["stylist", "Style AI"], ["blog", "Blog"], ["team", "Team"], ["wishlist", "Wishlist"], ["custom", "Custom Order"], ["about", "About"], ["contact", "Contact"], ["admin", "Admin"]].map(([k, l]) => (
               <button key={k} onClick={() => go(k)} className="text-left py-2.5 border-b" style={{ color: route.page === k ? GOLD : CREAM, borderColor: `${GOLD}22` }}>{l}</button>
             ))}
             <div className="pt-3"><SocialRow color={CREAM} /></div>
@@ -335,6 +388,7 @@ export default function App() {
         {route.page === "stylist" && <StylistPage {...pp} />}
         {route.page === "blog" && <BlogPage {...pp} />}
         {route.page === "post" && <BlogPostPage {...pp} postId={route.productId} />}
+        {route.page === "team" && <TeamPage {...pp} />}
         {route.page === "wishlist" && <WishlistPage {...pp} />}
         {route.page === "product" && <ProductPage {...pp} productId={route.productId} />}
         {route.page === "cart" && <CartPage {...pp} setDrawerOpen={setDrawerOpen} />}
@@ -812,7 +866,7 @@ function CustomOrderPage({ orders, saveOrders, showToast }) {
   };
   const submit = () => {
     if (!f.name.trim() || !f.phone.trim() || !f.outfit.trim()) { showToast("Fill name, phone and outfit type"); return; }
-    saveOrders([{ id: uid(), createdAt: todayISO(), customer: f.name, phone: f.phone, product: `Custom: ${f.outfit}${f.fabric ? ` (${f.fabric})` : ""}`, qty: 1, total: 0, date: f.date || todayISO(), fulfil: f.fulfil, payment: "pending", status: "new", notes: [f.gender && `Gender: ${f.gender}`, f.color && `Color: ${f.color}`, f.size && `Size: ${f.size}`, f.notes].filter(Boolean).join(" · "), refImage: f.refImage, source: "custom-form" }, ...orders]);
+    saveOrders([{ id: uid(), orderId: genId(orders, "PCW"), invoiceNo: genId(orders, "INV"), createdAt: todayISO(), customerId: "", customer: f.name, phone: f.phone, category: "custom", product: `Custom: ${f.outfit}${f.fabric ? ` (${f.fabric})` : ""}`, fabricType: f.fabric || "", fabricColor: f.color || "", qty: 1, price: 0, discount: 0, total: 0, deliveryDate: f.date || "", tailor: "", status: "pending", fulfil: f.fulfil, payments: [], instructions: [f.gender && `Gender: ${f.gender}`, f.size && `Size: ${f.size}`, f.notes].filter(Boolean).join(" · "), refImage: f.refImage, source: "custom-form" }, ...orders]);
     setSubmitted(true); window.open(waLink(msg()), "_blank");
   };
   if (submitted) return (
@@ -883,29 +937,51 @@ function ContactPage() {
 
 /* ================= ADMIN ================= */
 function AdminPage(props) { return props.isAdmin ? <AdminDashboard {...props} /> : <AdminLogin {...props} />; }
-function AdminLogin({ adminPass, setIsAdmin }) {
+function AdminLogin({ adminPass, setIsAdmin, staff, setRole, setStaffName }) {
   const [pass, setPass] = useState(""); const [err, setErr] = useState("");
-  const tryLogin = () => { if (pass === adminPass) setIsAdmin(true); else setErr("Incorrect password. Try again."); };
+  const tryLogin = () => {
+    if (pass === adminPass) { setRole("owner"); setStaffName("Owner"); setIsAdmin(true); return; }
+    const member = (staff || []).find((s) => s.passcode && s.passcode === pass && s.active !== false);
+    if (member) { setRole(member.role); setStaffName(member.name); setIsAdmin(true); return; }
+    setErr("Incorrect passcode. Try again.");
+  };
   return (
     <div className="max-w-sm mx-auto px-4 py-20">
       <div className="text-center mb-6"><Crest size={56} /></div>
-      <h1 className="text-center mb-6" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 700, fontSize: 28 }}>Admin Login</h1>
-      <input type="password" value={pass} onChange={(e) => { setPass(e.target.value); setErr(""); }} onKeyDown={(e) => e.key === "Enter" && tryLogin()} placeholder="Admin password" className="w-full px-3 py-3 rounded-sm text-sm mb-3" style={{ background: WHITE, border: `1px solid ${err ? "#C0392B" : CREAM_DARK}` }} />
+      <h1 className="text-center mb-2" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 700, fontSize: 28 }}>Staff Login</h1>
+      <p className="text-center text-xs mb-6" style={{ color: MUTED }}>Owner uses the admin password. Staff use the passcode set for them.</p>
+      <input type="password" value={pass} onChange={(e) => { setPass(e.target.value); setErr(""); }} onKeyDown={(e) => e.key === "Enter" && tryLogin()} placeholder="Password or staff passcode" className="w-full px-3 py-3 rounded-sm text-sm mb-3" style={{ background: WHITE, border: `1px solid ${err ? "#C0392B" : CREAM_DARK}` }} />
       {err && <p className="text-xs mb-3" style={{ color: "#C0392B" }}>{err}</p>}
       <GoldButton full onClick={tryLogin}>Log In</GoldButton>
-      <p className="text-xs mt-4 text-center" style={{ color: MUTED }}>Default password: <code>{DEFAULT_ADMIN_PASS}</code> — change it after first login.</p>
+      <p className="text-xs mt-4 text-center" style={{ color: MUTED }}>Default owner password: <code>{DEFAULT_ADMIN_PASS}</code> — change it in Settings after first login.</p>
     </div>
   );
 }
 function AdminDashboard(props) {
-  const [tab, setTab] = useState("products");
+  const { role, staffName } = props;
+  const allowed = (ROLES[role] || ROLES.viewer).tabs;
+  const [tab, setTab] = useState(allowed[0] || "dashboard");
+  const canEdit = role === "owner" || role === "manager" || role === "sales" || (role === "tailor" && tab === "orders");
+  const readOnly = role === "viewer";
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6"><h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 700, fontSize: 30 }}>PC Wears Dashboard</h1><GoldButton small outline onClick={() => props.setIsAdmin(false)}>Log Out</GoldButton></div>
-      <div className="flex gap-2 mb-6 flex-wrap">{[["products", "Products"], ["orders", "Orders"], ["blog", "Blog"], ["settings", "Settings"]].map(([k, l]) => <button key={k} onClick={() => setTab(k)} className="px-4 py-2 rounded-sm text-sm uppercase tracking-wider" style={{ background: tab === k ? BLACK : WHITE, color: tab === k ? GOLD : INK, border: `1px solid ${tab === k ? BLACK : CREAM_DARK}` }}>{l}</button>)}</div>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+        <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 700, fontSize: 30 }}>PC Wears Dashboard</h1>
+        <div className="flex items-center gap-3">
+          <span className="text-xs uppercase tracking-widest px-3 py-1 rounded-sm" style={{ background: INK, color: GOLD }}>{staffName} · {(ROLES[role] || {}).label || "Staff"}</span>
+          <GoldButton small outline onClick={() => { props.setIsAdmin(false); props.setRole(null); }}>Log Out</GoldButton>
+        </div>
+      </div>
+      <p className="text-xs mb-5" style={{ color: MUTED }}>Records are saved through the app's data layer. Connect Supabase in <code>src/lib/store.js</code> to make them permanent and shared across all devices.</p>
+      <div className="flex gap-2 mb-6 flex-wrap">{allowed.map((k) => <button key={k} onClick={() => setTab(k)} className="px-4 py-2 rounded-sm text-sm uppercase tracking-wider" style={{ background: tab === k ? BLACK : WHITE, color: tab === k ? GOLD : INK, border: `1px solid ${tab === k ? BLACK : CREAM_DARK}` }}>{TAB_LABELS[k]}</button>)}</div>
+      {tab === "dashboard" && <AdminSummary {...props} setTab={setTab} />}
+      {tab === "customers" && <AdminCustomers {...props} readOnly={readOnly} />}
+      {tab === "orders" && <AdminOrders {...props} readOnly={readOnly} />}
       {tab === "products" && <AdminProducts {...props} />}
-      {tab === "orders" && <AdminOrders {...props} />}
+      {tab === "inventory" && <AdminInventory {...props} />}
+      {tab === "team" && <AdminTeam {...props} />}
       {tab === "blog" && <AdminBlog {...props} />}
+      {tab === "staff" && <AdminStaff {...props} />}
       {tab === "settings" && <AdminSettings {...props} />}
     </div>
   );
@@ -975,55 +1051,261 @@ function ProductForm({ products, saveProducts, showToast, editing, done }) {
     </div>
   );
 }
-const PAYMENT_OPTS = [["pending", "Pending"], ["deposit", "Deposit Paid"], ["paid", "Fully Paid"]];
-const STATUS_OPTS = [["new", "New"], ["processing", "Processing"], ["ready", "Ready"], ["delivered", "Delivered"], ["cancelled", "Cancelled"]];
-const statusColor = { new: GOLD, processing: "#2980B9", ready: "#8E44AD", delivered: "#2E7D32", cancelled: "#C0392B" };
-function AdminOrders({ orders, saveOrders, showToast }) {
-  const [adding, setAdding] = useState(false); const [search, setSearch] = useState(""); const [statusFilter, setStatusFilter] = useState("all");
-  const inputStyle = { background: WHITE, border: `1px solid ${CREAM_DARK}` };
-  const now = new Date(); const within = (o, d) => (now - new Date(o.createdAt)) / 86400000 < d;
-  const stats = [["Today", orders.filter((o) => o.createdAt === todayISO()).length], ["This week", orders.filter((o) => within(o, 7)).length], ["This month", orders.filter((o) => within(o, 31)).length], ["All time", orders.length]];
-  const filtered = orders.filter((o) => { if (statusFilter !== "all" && o.status !== statusFilter) return false; if (search && !(o.customer + " " + o.phone + " " + o.product).toLowerCase().includes(search.toLowerCase())) return false; return true; });
+/* ================= ADMIN: ORDERS (full) ================= */
+function AdminOrders({ orders, saveOrders, customers, products, staff, showToast, readOnly }) {
+  const [editing, setEditing] = useState(null);
+  const [invoiceFor, setInvoiceFor] = useState(null);
+  const [search, setSearch] = useState("");
+  const [statusF, setStatusF] = useState("all");
+  const [payF, setPayF] = useState("all");
+  const [catF, setCatF] = useState("all");
+  const [tailorF, setTailorF] = useState("all");
+  const [from, setFrom] = useState(""); const [to, setTo] = useState("");
+
+  if (editing) return <OrderForm orders={orders} saveOrders={saveOrders} customers={customers} products={products} staff={staff} showToast={showToast} editing={editing === "new" ? null : editing} done={() => setEditing(null)} />;
+  if (invoiceFor) return <InvoiceDoc order={invoiceFor} customers={customers} kind={invoiceFor._kind || "invoice"} onClose={() => setInvoiceFor(null)} />;
+
+  const tailors = [...new Set(orders.map((o) => o.tailor).filter(Boolean))];
+  const list = orders.filter((o) => {
+    if (statusF !== "all" && (o.status || "pending") !== statusF) return false;
+    if (payF !== "all" && payStatus(o) !== payF) return false;
+    if (catF !== "all" && o.category !== catF) return false;
+    if (tailorF !== "all" && o.tailor !== tailorF) return false;
+    if (from && (o.createdAt || "") < from) return false;
+    if (to && (o.createdAt || "") > to) return false;
+    if (search) { const s = (o.orderId + " " + o.customer + " " + o.phone + " " + o.product).toLowerCase(); if (!s.includes(search.toLowerCase())) return false; }
+    return true;
+  });
+
   const update = (id, patch) => saveOrders(orders.map((o) => o.id === id ? { ...o, ...patch } : o));
   const remove = (id) => { if (window.confirm("Delete this order?")) { saveOrders(orders.filter((o) => o.id !== id)); showToast("Order deleted"); } };
-  if (adding) return <OrderForm orders={orders} saveOrders={saveOrders} showToast={showToast} done={() => setAdding(false)} />;
+  const exportCsv = () => {
+    const rows = [["Order ID","Invoice","Customer","Phone","Category","Product/Style","Qty","Total","Paid","Balance","Payment","Status","Tailor","Created","Due"],
+      ...orders.map((o) => [o.orderId, o.invoiceNo, o.customer, o.phone, o.category, o.product, o.qty, orderTotal(o), orderPaid(o), orderBalance(o), payStatus(o), o.status, o.tailor, o.createdAt, o.deliveryDate])];
+    downloadCSV("pcwears-orders.csv", rows);
+  };
+  const inputStyle = { background: WHITE, border: `1px solid ${CREAM_DARK}` };
+  const remindBalance = (o) => waLink(`Hello ${o.customer}, this is PC Wears. A friendly reminder that your order ${o.orderId || ""} has an outstanding balance of ${fmtLe(orderBalance(o))}. Thank you! ${WA_DISPLAY}`);
+  const remindReady = (o) => waLink(`Hello ${o.customer}, great news from PC Wears — your order ${o.orderId || ""} is READY for pickup at ${ADDRESS} or delivery. Thank you for choosing PC Wears!`);
+  const remindDue = (o) => waLink(`Hello ${o.customer}, this is PC Wears. Your order ${o.orderId || ""} is due on ${o.deliveryDate || "soon"}. We'll be in touch shortly. Thank you!`);
+
   return (
     <div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">{stats.map(([l, n]) => <div key={l} className="p-4 rounded-sm text-center" style={{ background: NAVY, color: CREAM }}><p className="text-2xl font-semibold" style={{ color: GOLD }}>{n}</p><p className="text-[10px] uppercase tracking-widest" style={{ color: MUTED }}>{l}</p></div>)}</div>
-      <div className="flex flex-wrap gap-2 mb-4"><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search customer, phone, product…" className="flex-1 min-w-[180px] px-3 py-2.5 rounded-sm text-sm" style={inputStyle} /><select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle}><option value="all">All statuses</option>{STATUS_OPTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select><GoldButton small onClick={() => setAdding(true)}>+ Record Order</GoldButton></div>
-      {!filtered.length && <p className="text-sm py-8 text-center" style={{ color: MUTED }}>No orders yet. WhatsApp orders can be logged here manually with the button above.</p>}
+      <div className="flex flex-wrap gap-2 mb-3 items-center">
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search order ID, customer, phone, product…" className="flex-1 min-w-[200px] px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
+        <GoldButton small outline onClick={exportCsv}>Export CSV</GoldButton>
+        {!readOnly && <GoldButton small onClick={() => setEditing("new")}>+ New Order</GoldButton>}
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-4">
+        <select value={statusF} onChange={(e) => setStatusF(e.target.value)} className="px-2 py-2 rounded-sm text-xs" style={inputStyle}><option value="all">All statuses</option>{ORDER_STATUS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
+        <select value={payF} onChange={(e) => setPayF(e.target.value)} className="px-2 py-2 rounded-sm text-xs" style={inputStyle}><option value="all">All payments</option>{["Paid","Part Payment","Deposit","Unpaid"].map((p) => <option key={p} value={p}>{p}</option>)}</select>
+        <select value={catF} onChange={(e) => setCatF(e.target.value)} className="px-2 py-2 rounded-sm text-xs" style={inputStyle}><option value="all">All categories</option>{CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}<option value="custom">Custom design</option></select>
+        <select value={tailorF} onChange={(e) => setTailorF(e.target.value)} className="px-2 py-2 rounded-sm text-xs" style={inputStyle}><option value="all">All tailors</option>{tailors.map((t) => <option key={t} value={t}>{t}</option>)}</select>
+        <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="px-2 py-2 rounded-sm text-xs" style={inputStyle} aria-label="From date" />
+        <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="px-2 py-2 rounded-sm text-xs" style={inputStyle} aria-label="To date" />
+      </div>
+      {!list.length && <p className="text-sm py-8 text-center" style={{ color: MUTED }}>No orders match. Create one with the New Order button — WhatsApp orders can be recorded here too.</p>}
       <div className="grid gap-3">
-        {filtered.map((o) => (
-          <div key={o.id} className="p-4 rounded-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}`, borderLeft: `4px solid ${statusColor[o.status] || GOLD}` }}>
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div><p className="font-medium text-sm">{o.customer} <span style={{ color: MUTED }}>· {o.phone}</span></p><p className="text-sm mt-0.5">{o.product} — Qty {o.qty} — <span style={{ color: GOLD }}>{o.total ? fmtLe(o.total) : "price TBC"}</span></p><p className="text-xs mt-1" style={{ color: MUTED }}>{o.createdAt} · {o.fulfil === "pickup" ? "Pickup" : "Delivery"}{o.date ? ` · needed by ${o.date}` : ""}{o.source === "custom-form" ? " · custom form" : ""}</p>{o.notes && <p className="text-xs mt-1 italic" style={{ color: MUTED }}>{o.notes}</p>}{o.refImage && <img src={o.refImage} alt="Reference" className="mt-2 h-20 rounded-sm object-cover" />}</div>
-              <div className="flex flex-col gap-2 items-end"><div className="flex gap-2"><select value={o.payment} onChange={(e) => update(o.id, { payment: e.target.value })} className="px-2 py-1.5 rounded-sm text-xs" style={inputStyle}>{PAYMENT_OPTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select><select value={o.status} onChange={(e) => update(o.id, { status: e.target.value })} className="px-2 py-1.5 rounded-sm text-xs" style={{ ...inputStyle, borderColor: statusColor[o.status] }}>{STATUS_OPTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div><button onClick={() => remove(o.id)} className="text-xs underline" style={{ color: "#C0392B" }}>Delete order</button></div>
+        {list.map((o) => {
+          const bal = orderBalance(o), ps = payStatus(o);
+          return (
+            <div key={o.id} className="p-4 rounded-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}`, borderLeft: `4px solid ${ORDER_STATUS_COLOR[o.status || "pending"]}` }}>
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-[200px]">
+                  <p className="text-[11px] uppercase tracking-widest" style={{ color: GOLD }}>{o.orderId || "—"}{o.invoiceNo ? ` · ${o.invoiceNo}` : ""}</p>
+                  <p className="font-medium text-sm">{o.customer} <span style={{ color: MUTED }}>· {o.phone}</span></p>
+                  <p className="text-sm mt-0.5">{o.product}{o.fabricColor ? ` · ${o.fabricColor}` : ""} — Qty {o.qty} — <span style={{ color: GOLD }}>{fmtLe(orderTotal(o))}</span></p>
+                  <p className="text-xs mt-1" style={{ color: MUTED }}>Paid {fmtLe(orderPaid(o))} · <span style={{ color: bal > 0 ? "#C0392B" : "#2E7D32" }}>{ps}{bal > 0 ? ` (${fmtLe(bal)} left)` : ""}</span>{o.tailor ? ` · Tailor: ${o.tailor}` : ""}{o.deliveryDate ? ` · due ${o.deliveryDate}` : ""}</p>
+                  {o.instructions && <p className="text-xs mt-1 italic" style={{ color: MUTED }}>{o.instructions}</p>}
+                  {o.refImage && <img src={o.refImage} alt="Reference" className="mt-2 h-20 rounded-sm object-cover" />}
+                </div>
+                <div className="flex flex-col gap-2 items-end no-print">
+                  {!readOnly && <select value={o.status || "pending"} onChange={(e) => update(o.id, { status: e.target.value })} className="px-2 py-1.5 rounded-sm text-xs" style={{ ...inputStyle, borderColor: ORDER_STATUS_COLOR[o.status || "pending"] }}>{ORDER_STATUS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>}
+                  <div className="flex flex-wrap gap-1.5 justify-end">
+                    <button onClick={() => setInvoiceFor({ ...o, _kind: "invoice" })} className="px-2 py-1 text-[11px] rounded-sm" style={{ border: `1px solid ${GOLD}`, color: GOLD }}>Invoice</button>
+                    <button onClick={() => setInvoiceFor({ ...o, _kind: "receipt" })} className="px-2 py-1 text-[11px] rounded-sm" style={{ border: `1px solid ${GOLD}`, color: GOLD }}>Receipt</button>
+                    <button onClick={() => setInvoiceFor({ ...o, _kind: "measurement" })} className="px-2 py-1 text-[11px] rounded-sm" style={{ border: `1px solid ${GOLD}`, color: GOLD }}>Measure</button>
+                    {!readOnly && <button onClick={() => setEditing(o)} className="px-2 py-1 text-[11px] rounded-sm" style={{ border: `1px solid ${CREAM_DARK}` }}>Edit</button>}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 justify-end">
+                    {bal > 0 && <a href={remindBalance(o)} target="_blank" rel="noopener noreferrer" className="px-2 py-1 text-[11px] rounded-sm" style={{ background: "#25D366", color: "#fff" }}>Remind balance</a>}
+                    {o.status === "ready" && <a href={remindReady(o)} target="_blank" rel="noopener noreferrer" className="px-2 py-1 text-[11px] rounded-sm" style={{ background: "#25D366", color: "#fff" }}>Order ready</a>}
+                    {o.deliveryDate && o.status !== "delivered" && <a href={remindDue(o)} target="_blank" rel="noopener noreferrer" className="px-2 py-1 text-[11px] rounded-sm" style={{ background: "#25D366", color: "#fff" }}>Due soon</a>}
+                  </div>
+                  {!readOnly && o.status !== "delivered" && <button onClick={() => update(o.id, { status: "delivered" })} className="text-[11px] underline" style={{ color: "#2E7D32" }}>Mark delivered</button>}
+                  {!readOnly && <button onClick={() => remove(o.id)} className="text-[11px] underline" style={{ color: "#C0392B" }}>Delete</button>}
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
 }
-function OrderForm({ orders, saveOrders, showToast, done }) {
-  const [f, setF] = useState({ customer: "", phone: "", product: "", qty: 1, total: "", date: todayISO(), fulfil: "delivery", payment: "pending", status: "new", notes: "" });
-  const set = (k) => (e) => setF({ ...f, [k]: e.target.value }); const inputStyle = { background: WHITE, border: `1px solid ${CREAM_DARK}` };
-  const save = () => { if (!f.customer.trim() || !f.product.trim()) { showToast("Customer name and product are required"); return; } saveOrders([{ ...f, id: uid(), createdAt: todayISO(), qty: Number(f.qty) || 1, total: Number(f.total) || 0 }, ...orders]); showToast("Order recorded"); done(); };
+
+function OrderForm({ orders, saveOrders, customers, products, staff, showToast, editing, done }) {
+  const base = editing || { customerId: "", customer: "", phone: "", category: "africana", product: "", styleName: "", fabricType: "", fabricColor: "", qty: 1, price: "", discount: "", status: "pending", deliveryDate: "", tailor: "", instructions: "", fulfil: "delivery", refImage: null, payments: [] };
+  const [f, setF] = useState({ ...base, payments: base.payments || [] });
+  const [pay, setPay] = useState({ amount: "", type: "Deposit", method: "Cash", staff: "", note: "" });
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const inputStyle = { background: WHITE, border: `1px solid ${CREAM_DARK}` };
+  const tailors = (staff || []).filter((s) => s.role === "tailor");
+
+  const pickCustomer = (id) => {
+    const c = customers.find((x) => x.id === id);
+    setF({ ...f, customerId: id, customer: c ? c.name : f.customer, phone: c ? c.phone : f.phone, refImage: c && c.refImage ? c.refImage : f.refImage });
+  };
+  const handleImage = async (e) => { const file = e.target.files?.[0]; if (!file) return; try { setF({ ...f, refImage: await resizeImage(file, 600) }); } catch { showToast("Could not read image"); } };
+  const total = Number(f.price || 0) * Number(f.qty || 1) - Number(f.discount || 0);
+  const addPayment = () => {
+    if (!pay.amount) { showToast("Enter payment amount"); return; }
+    setF({ ...f, payments: [...(f.payments || []), { ...pay, amount: Number(pay.amount), date: todayISO(), id: uid() }] });
+    setPay({ amount: "", type: "Balance Payment", method: "Cash", staff: pay.staff, note: "" });
+  };
+  const removePayment = (id) => setF({ ...f, payments: f.payments.filter((p) => p.id !== id) });
+  const paid = (f.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+
+  const save = () => {
+    if (!f.customer.trim() || !f.product.trim()) { showToast("Customer and product/style are required"); return; }
+    const record = { ...f, qty: Number(f.qty) || 1, price: Number(f.price) || 0, discount: Number(f.discount) || 0, total };
+    if (editing) saveOrders(orders.map((o) => o.id === editing.id ? { ...record, id: editing.id, orderId: editing.orderId, invoiceNo: editing.invoiceNo, createdAt: editing.createdAt } : o));
+    else saveOrders([{ ...record, id: uid(), orderId: genId(orders, "PCW"), invoiceNo: genId(orders, "INV"), createdAt: todayISO() }, ...orders]);
+    showToast(editing ? "Order updated" : "Order created"); done();
+  };
+
   return (
     <div className="max-w-2xl">
       <button onClick={done} className="text-xs uppercase tracking-widest mb-4" style={{ color: GOLD }}>← Back to orders</button>
-      <h2 className="mb-4" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 700, fontSize: 24 }}>Record Order</h2>
+      <h2 className="mb-4" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 700, fontSize: 24 }}>{editing ? `Edit Order ${editing.orderId || ""}` : "New Order"}</h2>
       <div className="grid gap-3">
-        <div className="grid sm:grid-cols-2 gap-3"><input value={f.customer} onChange={set("customer")} placeholder="Customer name *" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} /><input value={f.phone} onChange={set("phone")} placeholder="Customer phone" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} /></div>
-        <input value={f.product} onChange={set("product")} placeholder="Product(s) ordered *" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
-        <div className="grid grid-cols-3 gap-3"><input type="number" min="1" value={f.qty} onChange={set("qty")} placeholder="Qty" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} /><input type="number" min="0" value={f.total} onChange={set("total")} placeholder="Total (Le)" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} /><input type="date" value={f.date} onChange={set("date")} className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} /></div>
-        <div className="grid grid-cols-3 gap-3"><select value={f.fulfil} onChange={set("fulfil")} className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle}><option value="delivery">Delivery</option><option value="pickup">Pickup</option></select><select value={f.payment} onChange={set("payment")} className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle}>{PAYMENT_OPTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select><select value={f.status} onChange={set("status")} className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle}>{STATUS_OPTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
-        <textarea value={f.notes} onChange={set("notes")} rows={2} placeholder="Notes" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
-        <div className="flex gap-3"><GoldButton onClick={save}>Save Order</GoldButton><GoldButton outline onClick={done}>Cancel</GoldButton></div>
+        {customers.length > 0 && (
+          <label className="text-sm"><span className="block text-xs uppercase tracking-widest mb-1" style={{ color: MUTED }}>Link existing customer (optional)</span>
+            <select value={f.customerId} onChange={(e) => pickCustomer(e.target.value)} className="w-full px-3 py-2.5 rounded-sm text-sm" style={inputStyle}><option value="">— New / walk-in —</option>{customers.map((c) => <option key={c.id} value={c.id}>{c.name} · {c.phone}</option>)}</select>
+          </label>
+        )}
+        <div className="grid sm:grid-cols-2 gap-3"><input value={f.customer} onChange={set("customer")} placeholder="Customer name *" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} /><input value={f.phone} onChange={set("phone")} placeholder="Phone / WhatsApp" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} /></div>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <select value={f.category} onChange={set("category")} className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle}>{CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}<option value="custom">Custom design</option></select>
+          <input value={f.product} onChange={set("product")} placeholder="Outfit / product / style *" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
+        </div>
+        <div className="grid sm:grid-cols-2 gap-3"><input value={f.fabricType} onChange={set("fabricType")} placeholder="Fabric type" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} /><input value={f.fabricColor} onChange={set("fabricColor")} placeholder="Fabric color" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} /></div>
+        <div className="grid grid-cols-3 gap-3">
+          <label className="text-xs" style={{ color: MUTED }}>Qty<input type="number" min="1" value={f.qty} onChange={set("qty")} className="w-full px-3 py-2.5 rounded-sm text-sm mt-1" style={inputStyle} /></label>
+          <label className="text-xs" style={{ color: MUTED }}>Price (Le)<input type="number" min="0" value={f.price} onChange={set("price")} className="w-full px-3 py-2.5 rounded-sm text-sm mt-1" style={inputStyle} /></label>
+          <label className="text-xs" style={{ color: MUTED }}>Discount (Le)<input type="number" min="0" value={f.discount} onChange={set("discount")} className="w-full px-3 py-2.5 rounded-sm text-sm mt-1" style={inputStyle} /></label>
+        </div>
+        <div className="flex justify-between items-center p-3 rounded-sm" style={{ background: INK, color: CREAM }}><span className="text-sm">Order total</span><span className="font-semibold" style={{ color: GOLD }}>{fmtLe(total)}</span></div>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <label className="text-xs" style={{ color: MUTED }}>Status<select value={f.status} onChange={set("status")} className="w-full px-3 py-2.5 rounded-sm text-sm mt-1" style={inputStyle}>{ORDER_STATUS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
+          <label className="text-xs" style={{ color: MUTED }}>Expected delivery<input type="date" value={f.deliveryDate} onChange={set("deliveryDate")} className="w-full px-3 py-2.5 rounded-sm text-sm mt-1" style={inputStyle} /></label>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <input list="pcw-tailors" value={f.tailor} onChange={set("tailor")} placeholder="Assigned tailor / staff" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
+          <datalist id="pcw-tailors">{tailors.map((t) => <option key={t.id} value={t.name} />)}</datalist>
+          <select value={f.fulfil} onChange={set("fulfil")} className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle}><option value="delivery">Delivery</option><option value="pickup">Pickup</option></select>
+        </div>
+        <textarea value={f.instructions} onChange={set("instructions")} rows={2} placeholder="Special instructions" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
+        <label className="text-sm"><span className="block text-xs uppercase tracking-widest mb-1" style={{ color: MUTED }}>Reference style image</span><input type="file" accept="image/*" onChange={handleImage} className="w-full text-sm" />{f.refImage && <img src={f.refImage} alt="Reference" className="mt-2 h-24 rounded-sm object-cover" />}</label>
+
+        <div className="p-4 rounded-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}>
+          <p className="text-xs uppercase tracking-widest mb-3" style={{ color: GOLD }}>Payments — paid {fmtLe(paid)} · balance {fmtLe(Math.max(0, total - paid))} · {payStatus({ total, payments: f.payments })}</p>
+          {(f.payments || []).map((p) => (
+            <div key={p.id} className="flex items-center justify-between text-sm py-1.5 border-b" style={{ borderColor: CREAM_DARK }}>
+              <span>{fmtLe(p.amount)} · {p.method} · {p.type}{p.staff ? ` · ${p.staff}` : ""} <span style={{ color: MUTED }}>{p.date}</span></span>
+              <button onClick={() => removePayment(p.id)} style={{ color: "#C0392B" }} aria-label="Remove payment">✕</button>
+            </div>
+          ))}
+          <div className="grid sm:grid-cols-5 gap-2 items-end mt-3">
+            <input type="number" value={pay.amount} onChange={(e) => setPay({ ...pay, amount: e.target.value })} placeholder="Amount" className="px-2 py-2 rounded-sm text-sm" style={inputStyle} />
+            <select value={pay.type} onChange={(e) => setPay({ ...pay, type: e.target.value })} className="px-2 py-2 rounded-sm text-sm" style={inputStyle}>{PAY_TYPES.map((t) => <option key={t}>{t}</option>)}</select>
+            <select value={pay.method} onChange={(e) => setPay({ ...pay, method: e.target.value })} className="px-2 py-2 rounded-sm text-sm" style={inputStyle}>{PAY_METHODS.map((m) => <option key={m}>{m}</option>)}</select>
+            <input value={pay.staff} onChange={(e) => setPay({ ...pay, staff: e.target.value })} placeholder="Received by" className="px-2 py-2 rounded-sm text-sm" style={inputStyle} />
+            <GoldButton small onClick={addPayment}>Add</GoldButton>
+          </div>
+        </div>
+
+        <div className="flex gap-3"><GoldButton onClick={save}>{editing ? "Save Order" : "Create Order"}</GoldButton><GoldButton outline onClick={done}>Cancel</GoldButton></div>
       </div>
     </div>
   );
 }
+
+/* ================= INVOICE / RECEIPT / MEASUREMENT DOCUMENT ================= */
+function InvoiceDoc({ order, customers, kind, onClose }) {
+  const cust = customers.find((c) => c.id === order.customerId);
+  const total = orderTotal(order), paid = orderPaid(order), bal = orderBalance(order);
+  const title = kind === "receipt" ? "Payment Receipt" : kind === "measurement" ? "Measurement Sheet" : "Invoice";
+  const docNo = kind === "receipt" ? (order.invoiceNo || order.orderId || "").replace("INV", "RCP") : kind === "measurement" ? (order.orderId || "").replace("PCW", "MEA") : (order.invoiceNo || order.orderId || "");
+  const waShare = waLink(`Hello ${order.customer}, here is your ${title.toLowerCase()} from PC Wears.\nRef: ${docNo}\nOrder: ${order.product} x${order.qty}\nTotal: ${fmtLe(total)} · Paid: ${fmtLe(paid)} · Balance: ${fmtLe(bal)}\nThank you for choosing PC Wears!`);
+  const measure = cust?.measurements || {};
+  const measureFields = (cust?.gender === "Female" ? WOMEN_MEASURE : MEN_MEASURE);
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto" style={{ background: "#0009" }}>
+      <div className="min-h-full flex flex-col items-center py-8 px-3">
+        <div className="w-full max-w-2xl flex flex-wrap gap-2 justify-end mb-3 no-print">
+          <GoldButton small onClick={() => window.print()}>Print</GoldButton>
+          <GoldButton small outline onClick={() => window.print()}>Download PDF</GoldButton>
+          <GoldButton small outline href={waShare}><WaIcon size={13} color={GOLD} /> Share on WhatsApp</GoldButton>
+          <button onClick={onClose} className="px-4 py-2 text-xs rounded-sm uppercase tracking-wider" style={{ background: BLACK, color: CREAM }}>Close</button>
+        </div>
+        <div id="pcw-print" className="w-full max-w-2xl p-8" style={{ background: WHITE, color: INK }}>
+          <div className="flex items-start justify-between pb-4 mb-4" style={{ borderBottom: `2px solid ${GOLD}` }}>
+            <div className="flex items-center gap-3"><Crest size={50} /><div><p style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 700, fontSize: 26 }}>PC WEARS</p><p className="text-[10px] uppercase tracking-[0.2em]" style={{ color: GOLD }}>People's Choice Wears</p><p className="text-xs italic mt-0.5" style={{ color: MUTED }}>Crafted with Choice. Worn with Pride.</p></div></div>
+            <div className="text-right text-xs" style={{ color: MUTED }}><p className="text-lg font-semibold" style={{ color: INK }}>{title}</p><p>{docNo}</p><p>{todayISO()}</p></div>
+          </div>
+          <div className="flex flex-wrap justify-between gap-4 text-xs mb-5" style={{ color: "#4A453C" }}>
+            <div><p className="uppercase tracking-widest mb-1" style={{ color: GOLD }}>From</p><p>PC Wears</p><p>{ADDRESS}</p><p>WhatsApp: {WA_DISPLAY}</p></div>
+            <div className="text-right"><p className="uppercase tracking-widest mb-1" style={{ color: GOLD }}>Bill to</p><p className="font-medium" style={{ color: INK }}>{order.customer}</p><p>{order.phone}</p>{cust?.address && <p>{cust.address}</p>}</div>
+          </div>
+
+          {kind === "measurement" ? (
+            <table className="w-full text-sm mb-5"><tbody>
+              {measureFields.map((m) => <tr key={m} style={{ borderBottom: `1px solid ${CREAM_DARK}` }}><td className="py-1.5" style={{ color: MUTED }}>{m}</td><td className="py-1.5 text-right font-medium">{measure[m] || "—"}</td></tr>)}
+              {measure["Extra note"] && <tr><td className="py-1.5" style={{ color: MUTED }}>Note</td><td className="py-1.5 text-right">{measure["Extra note"]}</td></tr>}
+            </tbody></table>
+          ) : (
+            <table className="w-full text-sm mb-4">
+              <thead><tr style={{ background: CREAM }}><th className="text-left p-2">Description</th><th className="text-center p-2">Qty</th><th className="text-right p-2">Price</th><th className="text-right p-2">Amount</th></tr></thead>
+              <tbody>
+                <tr style={{ borderBottom: `1px solid ${CREAM_DARK}` }}>
+                  <td className="p-2">{order.product}{order.fabricType ? ` · ${order.fabricType}` : ""}{order.fabricColor ? ` · ${order.fabricColor}` : ""}<br /><span className="text-xs" style={{ color: MUTED }}>{catName(order.category)}{order.styleName ? ` · ${order.styleName}` : ""}</span></td>
+                  <td className="text-center p-2">{order.qty}</td>
+                  <td className="text-right p-2">{fmtLe(order.price)}</td>
+                  <td className="text-right p-2">{fmtLe(Number(order.price || 0) * Number(order.qty || 1))}</td>
+                </tr>
+              </tbody>
+            </table>
+          )}
+
+          {kind !== "measurement" && (
+            <div className="flex justify-end mb-5"><div className="w-56 text-sm">
+              {Number(order.discount) > 0 && <div className="flex justify-between py-1"><span style={{ color: MUTED }}>Discount</span><span>− {fmtLe(order.discount)}</span></div>}
+              <div className="flex justify-between py-1" style={{ borderTop: `1px solid ${CREAM_DARK}` }}><span style={{ color: MUTED }}>Total</span><span className="font-semibold">{fmtLe(total)}</span></div>
+              <div className="flex justify-between py-1"><span style={{ color: MUTED }}>Paid</span><span style={{ color: "#2E7D32" }}>{fmtLe(paid)}</span></div>
+              <div className="flex justify-between py-1" style={{ borderTop: `1px solid ${CREAM_DARK}` }}><span className="font-medium">Balance</span><span className="font-semibold" style={{ color: bal > 0 ? "#C0392B" : "#2E7D32" }}>{fmtLe(bal)}</span></div>
+              <p className="text-right text-xs mt-1" style={{ color: GOLD }}>{payStatus(order)}</p>
+            </div></div>
+          )}
+
+          {kind === "receipt" && (order.payments || []).length > 0 && (
+            <div className="mb-5"><p className="uppercase tracking-widest text-xs mb-2" style={{ color: GOLD }}>Payments received</p>
+              <table className="w-full text-xs"><tbody>{order.payments.map((p) => <tr key={p.id} style={{ borderBottom: `1px solid ${CREAM_DARK}` }}><td className="py-1">{p.date}</td><td className="py-1">{p.method}</td><td className="py-1">{p.type}</td><td className="py-1 text-right">{fmtLe(p.amount)}</td></tr>)}</tbody></table>
+            </div>
+          )}
+
+          {order.deliveryDate && <p className="text-xs mb-4" style={{ color: MUTED }}>Expected delivery: {order.deliveryDate} · {order.fulfil === "pickup" ? "Pickup at shop" : "Delivery within Freetown"}</p>}
+
+          <div className="flex justify-between items-end mt-8 pt-4" style={{ borderTop: `1px solid ${CREAM_DARK}` }}>
+            <div className="text-xs" style={{ color: MUTED }}><p className="mb-6">_____________________________</p><p>Authorized signature</p></div>
+            <p className="text-sm italic" style={{ fontFamily: "'Cormorant Garamond', serif", color: GOLD }}>Thank you for shopping with PC Wears!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AdminSettings({ adminPass, setAdminPass, showToast, products, saveProducts }) {
   const [newPass, setNewPass] = useState(""); const inputStyle = { background: WHITE, border: `1px solid ${CREAM_DARK}` };
   const changePass = () => { if (newPass.trim().length < 6) { showToast("Password must be at least 6 characters"); return; } setAdminPass(newPass.trim()); sSet("pcw2:adminpass", newPass.trim(), true); setNewPass(""); showToast("Password updated"); };
@@ -1272,6 +1554,280 @@ function BlogForm({ posts, savePosts, showToast, editing, done }) {
         <textarea value={f.excerpt} onChange={set("excerpt")} rows={2} placeholder="Short excerpt (shown on the blog list)" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
         <textarea value={f.body} onChange={set("body")} rows={8} placeholder="Write your post. Leave a blank line between paragraphs." className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
         <div className="flex gap-3"><GoldButton onClick={save}>{editing ? "Save Changes" : "Publish Post"}</GoldButton><GoldButton outline onClick={done}>Cancel</GoldButton></div>
+      </div>
+    </div>
+  );
+}
+
+/* ================= PUBLIC: MEET OUR TEAM ================= */
+function TeamPage({ team }) {
+  const visible = (team || []).filter((m) => m.active !== false);
+  return (
+    <div className="max-w-5xl mx-auto px-4 py-12">
+      <SectionTitle eyebrow="The people behind the brand" title="Meet Our Team" />
+      <p className="text-sm mb-8 -mt-2" style={{ color: MUTED }}>A dedicated team crafting quality, style and service at PC Wears.</p>
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {visible.map((m) => (
+          <div key={m.id} className="rounded-sm overflow-hidden flex flex-col" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}>
+            <div className="aspect-square flex items-center justify-center" style={{ background: `radial-gradient(circle at 30% 25%, ${NAVY_SOFT}, ${BLACK})` }}>
+              {m.image ? <img src={m.image} alt={m.name} className="w-full h-full object-cover" /> : <span style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 700, fontSize: 44, color: GOLD }}>{m.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}</span>}
+            </div>
+            <div className="p-4 flex-1 flex flex-col">
+              <h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 700, fontSize: 19, lineHeight: 1.15 }}>{m.name}</h3>
+              <p className="text-[11px] uppercase tracking-widest mt-0.5" style={{ color: GOLD }}>{m.role}</p>
+              <p className="text-xs mt-2 flex-1" style={{ color: MUTED }}>{m.bio}</p>
+              <div className="flex gap-2 mt-3">
+                {m.phone && <a href={waLink(`Hello ${m.name} at PC Wears.`)} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full flex items-center justify-center" style={{ border: `1px solid ${GOLD}55` }} aria-label="WhatsApp"><WaIcon size={15} color={GOLD} /></a>}
+                {m.social && <a href={m.social} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full flex items-center justify-center text-xs" style={{ border: `1px solid ${GOLD}55`, color: GOLD }} aria-label="Social">@</a>}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ================= ADMIN: DASHBOARD SUMMARY ================= */
+function StatCard({ label, value, accent }) {
+  return (
+    <div className="p-4 rounded-sm" style={{ background: NAVY, color: CREAM }}>
+      <p className="text-2xl font-semibold" style={{ color: accent || GOLD }}>{value}</p>
+      <p className="text-[10px] uppercase tracking-widest mt-0.5" style={{ color: MUTED }}>{label}</p>
+    </div>
+  );
+}
+function AdminSummary({ customers, orders, setTab }) {
+  const now = new Date();
+  const byStatus = (s) => orders.filter((o) => (o.status || "pending") === s).length;
+  const totalSales = orders.reduce((s, o) => s + orderTotal(o), 0);
+  const totalPaid = orders.reduce((s, o) => s + orderPaid(o), 0);
+  const outstanding = orders.reduce((s, o) => s + orderBalance(o), 0);
+  const depositsToday = orders.reduce((s, o) => s + ((o.payments || []).filter((p) => p.date === todayISO()).reduce((a, p) => a + Number(p.amount || 0), 0)), 0);
+  const within7 = (d) => { if (!d) return false; const diff = (new Date(d) - now) / 86400000; return diff >= -0.5 && diff <= 7; };
+  const dueThisWeek = orders.filter((o) => within7(o.deliveryDate) && o.status !== "delivered" && o.status !== "cancelled").length;
+  return (
+    <div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-4">
+        <StatCard label="Total customers" value={customers.length} />
+        <StatCard label="Total orders" value={orders.length} />
+        <StatCard label="Pending" value={byStatus("pending")} />
+        <StatCard label="In progress" value={byStatus("in_progress")} accent="#5DADE2" />
+        <StatCard label="Ready" value={byStatus("ready")} accent="#BB8FCE" />
+        <StatCard label="Delivered" value={byStatus("delivered")} accent="#7DCEA0" />
+        <StatCard label="Due this week" value={dueThisWeek} accent="#F1948A" />
+        <StatCard label="Deposits today" value={fmtLe(depositsToday)} />
+      </div>
+      <div className="grid sm:grid-cols-3 gap-3 mb-6">
+        <div className="p-5 rounded-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}><p className="text-xs uppercase tracking-widest" style={{ color: MUTED }}>Total sales</p><p className="text-2xl font-semibold mt-1">{fmtLe(totalSales)}</p></div>
+        <div className="p-5 rounded-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}><p className="text-xs uppercase tracking-widest" style={{ color: MUTED }}>Amount paid</p><p className="text-2xl font-semibold mt-1" style={{ color: "#2E7D32" }}>{fmtLe(totalPaid)}</p></div>
+        <div className="p-5 rounded-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}><p className="text-xs uppercase tracking-widest" style={{ color: MUTED }}>Outstanding balance</p><p className="text-2xl font-semibold mt-1" style={{ color: "#C0392B" }}>{fmtLe(outstanding)}</p></div>
+      </div>
+      <div className="flex flex-wrap gap-3"><GoldButton small onClick={() => setTab("customers")}>Manage Customers</GoldButton><GoldButton small outline onClick={() => setTab("orders")}>Manage Orders</GoldButton></div>
+    </div>
+  );
+}
+
+/* ================= ADMIN: CUSTOMERS ================= */
+function AdminCustomers({ customers, saveCustomers, orders, showToast, readOnly }) {
+  const [editing, setEditing] = useState(null);
+  const [search, setSearch] = useState("");
+  if (editing) return <CustomerForm customers={customers} saveCustomers={saveCustomers} showToast={showToast} editing={editing === "new" ? null : editing} done={() => setEditing(null)} />;
+  const list = customers.filter((c) => (c.name + " " + c.phone + " " + (c.email || "")).toLowerCase().includes(search.toLowerCase()));
+  const remove = (id) => { if (window.confirm("Delete this customer?")) { saveCustomers(customers.filter((c) => c.id !== id)); showToast("Customer deleted"); } };
+  const exportCsv = () => {
+    const rows = [["Name","Phone","Email","Gender","Address","Added","Note"], ...customers.map((c) => [c.name, c.phone, c.email, c.gender, c.address, c.createdAt, c.note])];
+    downloadCSV("pcwears-customers.csv", rows);
+  };
+  return (
+    <div>
+      <div className="flex flex-wrap gap-2 mb-4 items-center">
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, phone, email…" className="flex-1 min-w-[180px] px-3 py-2.5 rounded-sm text-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }} />
+        <GoldButton small outline onClick={exportCsv}>Export CSV</GoldButton>
+        {!readOnly && <GoldButton small onClick={() => setEditing("new")}>+ Add Customer</GoldButton>}
+      </div>
+      {!list.length && <p className="text-sm py-8 text-center" style={{ color: MUTED }}>No customers yet. Add your first customer to start keeping records.</p>}
+      <div className="grid gap-3">
+        {list.map((c) => {
+          const cOrders = orders.filter((o) => o.customerId === c.id);
+          const owed = cOrders.reduce((s, o) => s + orderBalance(o), 0);
+          return (
+            <div key={c.id} className="p-4 rounded-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}>
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="flex-1 min-w-[180px]">
+                  <p className="font-medium text-sm">{c.name} <span style={{ color: MUTED }}>· {c.phone}</span></p>
+                  <p className="text-xs mt-0.5" style={{ color: MUTED }}>{[c.gender, c.email, c.address].filter(Boolean).join(" · ")}</p>
+                  <p className="text-xs mt-1" style={{ color: MUTED }}>{cOrders.length} order{cOrders.length !== 1 ? "s" : ""}{owed > 0 ? ` · ${fmtLe(owed)} outstanding` : ""}{c.gender ? "" : ""}</p>
+                  {c.note && <p className="text-xs mt-1 italic" style={{ color: MUTED }}>{c.note}</p>}
+                  {c.measurements && Object.keys(c.measurements).length > 0 && <p className="text-[11px] mt-1" style={{ color: GOLD }}>Measurements on file ✓</p>}
+                </div>
+                {!readOnly && <div className="flex gap-2"><GoldButton small outline onClick={() => setEditing(c)}>Edit</GoldButton><button onClick={() => remove(c.id)} className="px-3 py-2 text-xs rounded-sm uppercase tracking-wider" style={{ border: "1.5px solid #C0392B", color: "#C0392B" }}>Delete</button></div>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+function CustomerForm({ customers, saveCustomers, showToast, editing, done }) {
+  const [f, setF] = useState(editing || { name: "", phone: "", email: "", address: "", gender: "Male", note: "", measurements: {}, refImage: null });
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const setM = (k) => (e) => setF({ ...f, measurements: { ...f.measurements, [k]: e.target.value } });
+  const inputStyle = { background: WHITE, border: `1px solid ${CREAM_DARK}` };
+  const fields = f.gender === "Female" ? WOMEN_MEASURE : MEN_MEASURE;
+  const handleImage = async (e) => { const file = e.target.files?.[0]; if (!file) return; try { setF({ ...f, refImage: await resizeImage(file, 600) }); showToast("Image attached"); } catch { showToast("Could not read image"); } };
+  const save = () => {
+    if (!f.name.trim() || !f.phone.trim()) { showToast("Name and phone are required"); return; }
+    if (editing) saveCustomers(customers.map((c) => c.id === editing.id ? { ...f, id: editing.id } : c));
+    else saveCustomers([{ ...f, id: uid(), createdAt: todayISO() }, ...customers]);
+    showToast(editing ? "Customer updated" : "Customer added"); done();
+  };
+  return (
+    <div className="max-w-2xl">
+      <button onClick={done} className="text-xs uppercase tracking-widest mb-4" style={{ color: GOLD }}>← Back to customers</button>
+      <h2 className="mb-4" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 700, fontSize: 24 }}>{editing ? "Edit Customer" : "Add Customer"}</h2>
+      <div className="grid gap-3">
+        <div className="grid sm:grid-cols-2 gap-3"><input value={f.name} onChange={set("name")} placeholder="Full name *" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} /><input value={f.phone} onChange={set("phone")} placeholder="Phone / WhatsApp *" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} /></div>
+        <div className="grid sm:grid-cols-2 gap-3"><input value={f.email} onChange={set("email")} placeholder="Email (optional)" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} /><select value={f.gender} onChange={set("gender")} className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle}><option>Male</option><option>Female</option><option>Other</option></select></div>
+        <input value={f.address} onChange={set("address")} placeholder="Address / delivery location" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
+        <textarea value={f.note} onChange={set("note")} rows={2} placeholder="Customer note" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
+        <div className="p-4 rounded-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}>
+          <p className="text-xs uppercase tracking-widest mb-3" style={{ color: GOLD }}>{f.gender === "Female" ? "Women's" : "Men's"} measurements</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {fields.map((m) => <input key={m} value={f.measurements?.[m] || ""} onChange={setM(m)} placeholder={m} className="px-2.5 py-2 rounded-sm text-sm" style={inputStyle} />)}
+          </div>
+          <textarea value={f.measurements?.["Extra note"] || ""} onChange={setM("Extra note")} rows={2} placeholder="Extra tailoring note" className="mt-2 w-full px-2.5 py-2 rounded-sm text-sm" style={inputStyle} />
+        </div>
+        <label className="text-sm"><span className="block text-xs uppercase tracking-widest mb-1" style={{ color: MUTED }}>Reference style image (optional)</span><input type="file" accept="image/*" onChange={handleImage} className="w-full text-sm" />{f.refImage && <img src={f.refImage} alt="Reference" className="mt-2 h-28 rounded-sm object-cover" />}</label>
+        <div className="flex gap-3"><GoldButton onClick={save}>{editing ? "Save Changes" : "Add Customer"}</GoldButton><GoldButton outline onClick={done}>Cancel</GoldButton></div>
+      </div>
+    </div>
+  );
+}
+
+/* ================= ADMIN: TEAM ================= */
+function AdminTeam({ team, saveTeam, showToast }) {
+  const [editing, setEditing] = useState(null);
+  if (editing) return <TeamForm team={team} saveTeam={saveTeam} showToast={showToast} editing={editing === "new" ? null : editing} done={() => setEditing(null)} />;
+  const remove = (id) => { if (window.confirm("Delete this team member?")) { saveTeam(team.filter((t) => t.id !== id)); showToast("Removed"); } };
+  const toggle = (id) => saveTeam(team.map((t) => t.id === id ? { ...t, active: !(t.active !== false) } : t));
+  const move = (i, dir) => { const j = i + dir; if (j < 0 || j >= team.length) return; const n = [...team]; [n[i], n[j]] = [n[j], n[i]]; saveTeam(n); };
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-4"><p className="text-sm" style={{ color: MUTED }}>{team.length} members · shown on the public Team page</p><GoldButton small onClick={() => setEditing("new")}>+ Add Member</GoldButton></div>
+      <div className="grid gap-3">
+        {team.map((t, i) => (
+          <div key={t.id} className="flex flex-wrap items-center gap-3 p-3 rounded-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}>
+            <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 flex items-center justify-center" style={{ background: NAVY_SOFT, color: GOLD, fontWeight: 700 }}>{t.image ? <img src={t.image} alt={t.name} className="w-full h-full object-cover" /> : t.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}</div>
+            <div className="flex-1 min-w-[150px]"><p className="font-medium text-sm">{t.name}</p><p className="text-xs" style={{ color: MUTED }}>{t.role}</p></div>
+            <div className="flex items-center gap-1">
+              <button onClick={() => move(i, -1)} className="px-2 py-1 text-xs rounded-sm" style={{ border: `1px solid ${CREAM_DARK}` }} aria-label="Move up">↑</button>
+              <button onClick={() => move(i, 1)} className="px-2 py-1 text-xs rounded-sm" style={{ border: `1px solid ${CREAM_DARK}` }} aria-label="Move down">↓</button>
+            </div>
+            <button onClick={() => toggle(t.id)} className="px-2 py-1 rounded-sm text-[10px] uppercase tracking-wider" style={{ background: t.active !== false ? "#2E7D32" : CREAM_DARK, color: t.active !== false ? WHITE : MUTED }}>{t.active !== false ? "Visible" : "Hidden"}</button>
+            <GoldButton small outline onClick={() => setEditing(t)}>Edit</GoldButton>
+            <button onClick={() => remove(t.id)} className="px-3 py-2 text-xs rounded-sm uppercase tracking-wider" style={{ border: "1.5px solid #C0392B", color: "#C0392B" }}>Delete</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+function TeamForm({ team, saveTeam, showToast, editing, done }) {
+  const [f, setF] = useState(editing || { name: "", role: "", bio: "", phone: "", email: "", social: "", image: null, active: true });
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const inputStyle = { background: WHITE, border: `1px solid ${CREAM_DARK}` };
+  const handleImage = async (e) => { const file = e.target.files?.[0]; if (!file) return; try { setF({ ...f, image: await resizeImage(file, 500) }); showToast("Image added"); } catch { showToast("Could not read image"); } };
+  const save = () => {
+    if (!f.name.trim() || !f.role.trim()) { showToast("Name and role are required"); return; }
+    if (editing) saveTeam(team.map((t) => t.id === editing.id ? { ...f, id: editing.id } : t));
+    else saveTeam([...team, { ...f, id: uid() }]);
+    showToast(editing ? "Updated" : "Member added"); done();
+  };
+  return (
+    <div className="max-w-2xl">
+      <button onClick={done} className="text-xs uppercase tracking-widest mb-4" style={{ color: GOLD }}>← Back to team</button>
+      <h2 className="mb-4" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 700, fontSize: 24 }}>{editing ? "Edit Member" : "Add Member"}</h2>
+      <div className="grid gap-3">
+        <div className="grid sm:grid-cols-2 gap-3"><input value={f.name} onChange={set("name")} placeholder="Full name *" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} /><input value={f.role} onChange={set("role")} placeholder="Position / title *" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} /></div>
+        <textarea value={f.bio} onChange={set("bio")} rows={3} placeholder="Short biography" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
+        <div className="grid sm:grid-cols-2 gap-3"><input value={f.phone} onChange={set("phone")} placeholder="WhatsApp number (digits, e.g. 23279...)" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} /><input value={f.email} onChange={set("email")} placeholder="Email" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} /></div>
+        <input value={f.social} onChange={set("social")} placeholder="Social media link (optional)" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
+        <label className="text-sm"><span className="block text-xs uppercase tracking-widest mb-1" style={{ color: MUTED }}>Profile image</span><input type="file" accept="image/*" onChange={handleImage} className="w-full text-sm" />{f.image && <img src={f.image} alt="Preview" className="mt-2 h-24 w-24 rounded-full object-cover" />}</label>
+        <div className="flex gap-3"><GoldButton onClick={save}>{editing ? "Save Changes" : "Add Member"}</GoldButton><GoldButton outline onClick={done}>Cancel</GoldButton></div>
+      </div>
+    </div>
+  );
+}
+
+/* ================= ADMIN: STAFF (roles) ================= */
+function AdminStaff({ staff, saveStaff, showToast }) {
+  const [f, setF] = useState({ name: "", role: "sales", passcode: "" });
+  const inputStyle = { background: WHITE, border: `1px solid ${CREAM_DARK}` };
+  const add = () => {
+    if (!f.name.trim() || !f.passcode.trim()) { showToast("Name and passcode required"); return; }
+    if (f.passcode.trim().length < 4) { showToast("Passcode should be at least 4 characters"); return; }
+    saveStaff([...staff, { ...f, id: uid(), active: true }]); setF({ name: "", role: "sales", passcode: "" }); showToast("Staff added");
+  };
+  const remove = (id) => { if (window.confirm("Remove this staff login?")) saveStaff(staff.filter((s) => s.id !== id)); };
+  const toggle = (id) => saveStaff(staff.map((s) => s.id === id ? { ...s, active: !(s.active !== false) } : s));
+  return (
+    <div className="max-w-2xl">
+      <p className="text-sm mb-4" style={{ color: MUTED }}>Create logins for your team. Each staff member logs in with their passcode and only sees what their role allows. The Owner always uses the admin password.</p>
+      <div className="p-4 rounded-sm mb-5 grid sm:grid-cols-4 gap-2 items-end" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}>
+        <input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="Staff name" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
+        <select value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })} className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle}>
+          {Object.entries(ROLES).filter(([k]) => k !== "owner").map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+        </select>
+        <input value={f.passcode} onChange={(e) => setF({ ...f, passcode: e.target.value })} placeholder="Passcode" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
+        <GoldButton small onClick={add}>Add Staff</GoldButton>
+      </div>
+      <div className="grid gap-2">
+        {!staff.length && <p className="text-sm" style={{ color: MUTED }}>No staff logins yet.</p>}
+        {staff.map((s) => (
+          <div key={s.id} className="flex items-center gap-3 p-3 rounded-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}>
+            <div className="flex-1"><p className="font-medium text-sm">{s.name}</p><p className="text-xs" style={{ color: MUTED }}>{(ROLES[s.role] || {}).label} · passcode: {s.passcode}</p></div>
+            <button onClick={() => toggle(s.id)} className="px-2 py-1 rounded-sm text-[10px] uppercase tracking-wider" style={{ background: s.active !== false ? "#2E7D32" : CREAM_DARK, color: s.active !== false ? WHITE : MUTED }}>{s.active !== false ? "Active" : "Disabled"}</button>
+            <button onClick={() => remove(s.id)} className="px-3 py-2 text-xs rounded-sm uppercase tracking-wider" style={{ border: "1.5px solid #C0392B", color: "#C0392B" }}>Remove</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ================= ADMIN: INVENTORY (fabric stock) ================= */
+function AdminInventory({ fabrics, saveFabrics, products, showToast }) {
+  const [f, setF] = useState({ name: "", color: "", qty: "", unit: "yards" });
+  const inputStyle = { background: WHITE, border: `1px solid ${CREAM_DARK}` };
+  const add = () => { if (!f.name.trim()) { showToast("Fabric name required"); return; } saveFabrics([{ ...f, id: uid(), qty: Number(f.qty) || 0 }, ...fabrics]); setF({ name: "", color: "", qty: "", unit: "yards" }); showToast("Fabric added"); };
+  const adjust = (id, d) => saveFabrics(fabrics.map((x) => x.id === id ? { ...x, qty: Math.max(0, Number(x.qty) + d) } : x));
+  const remove = (id) => saveFabrics(fabrics.filter((x) => x.id !== id));
+  const lowStock = products.filter((p) => p.stock === "sold_out").length;
+  return (
+    <div className="max-w-3xl">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
+        <StatCard label="Fabric records" value={fabrics.length} />
+        <StatCard label="Products" value={products.length} />
+        <StatCard label="Sold-out products" value={lowStock} accent="#F1948A" />
+      </div>
+      <p className="text-sm mb-2" style={{ color: GOLD }}>Fabric stock</p>
+      <div className="p-4 rounded-sm mb-4 grid sm:grid-cols-5 gap-2 items-end" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}>
+        <input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="Fabric name" className="px-3 py-2.5 rounded-sm text-sm sm:col-span-2" style={inputStyle} />
+        <input value={f.color} onChange={(e) => setF({ ...f, color: e.target.value })} placeholder="Color" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
+        <input type="number" value={f.qty} onChange={(e) => setF({ ...f, qty: e.target.value })} placeholder="Qty" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
+        <GoldButton small onClick={add}>Add</GoldButton>
+      </div>
+      <div className="grid gap-2">
+        {!fabrics.length && <p className="text-sm" style={{ color: MUTED }}>No fabric stock recorded yet. Product stock status is managed under the Products tab.</p>}
+        {fabrics.map((x) => (
+          <div key={x.id} className="flex items-center gap-3 p-3 rounded-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}>
+            <div className="flex-1"><p className="font-medium text-sm">{x.name}{x.color ? ` · ${x.color}` : ""}</p><p className="text-xs" style={{ color: x.qty <= 2 ? "#C0392B" : MUTED }}>{x.qty} {x.unit} in stock{x.qty <= 2 ? " · low!" : ""}</p></div>
+            <div className="inline-flex items-center rounded-sm" style={{ border: `1px solid ${CREAM_DARK}` }}><button onClick={() => adjust(x.id, -1)} className="px-3 py-1.5" aria-label="Decrease">−</button><span className="px-2 text-sm">{x.qty}</span><button onClick={() => adjust(x.id, 1)} className="px-3 py-1.5" aria-label="Increase">+</button></div>
+            <button onClick={() => remove(x.id)} className="px-3 py-2 text-xs rounded-sm uppercase tracking-wider" style={{ border: "1.5px solid #C0392B", color: "#C0392B" }}>Delete</button>
+          </div>
+        ))}
       </div>
     </div>
   );

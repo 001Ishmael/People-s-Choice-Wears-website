@@ -22,6 +22,14 @@ An admin dashboard manages products and orders.
 - **PC Cosmetics** page (lipsticks, foundation, palettes, skincare and more)
 - **Blog** with admin authoring (write, edit, delete posts)
 - **AI Style Advisor** chatbot for outfit design & color advice
+- **Meet Our Team** page + admin team management (add/edit/hide/reorder, photos)
+- **Customer records** with men's/women's measurements and reference images
+- **Full order management**: auto order & invoice numbers, fabric/style details, assigned tailor, status
+- **Payments**: deposits/part/full, methods, auto balance & payment status
+- **Invoices, receipts & measurement sheets** — print, save as PDF, share on WhatsApp
+- **Dashboard summaries**, search & filters, CSV export, fabric inventory
+- **Staff roles & logins**: Owner, Manager, Sales, Tailor, Viewer
+- **WhatsApp reminders** for unpaid balance, order ready, and due-soon
 - Loading animation, smooth scroll, mobile-first, SEO meta tags
 
 ## Business details
@@ -88,4 +96,34 @@ that holds your Anthropic API key (never put the key in frontend code):
 
 If the AI call ever fails, the page automatically falls back to the built-in advisor, so
 customers always get useful guidance.
+
+## Staff logins & roles
+
+The dashboard supports roles with different access:
+
+- **Owner / Admin** — full access (logs in with the admin password)
+- **Manager** — customers, orders, payments, products, inventory, team, blog
+- **Sales Staff** — customers, orders, payments, receipts
+- **Tailor / Production** — view and update assigned orders
+- **Viewer** — read-only
+
+The Owner creates staff logins (name + role + passcode) under the **Staff** tab. Each staff
+member then logs in with their passcode and only sees what their role allows.
+
+## Invoices, receipts & PDFs
+
+Open any order and use **Invoice**, **Receipt**, or **Measure** to generate a branded
+document with your logo, slogan, address, WhatsApp, totals, balance, a signature line and a
+thank-you note. **Print** uses your browser's print dialog; to save a PDF, choose
+"Save as PDF" as the printer destination (that's what the **Download PDF** button opens).
+**Share on WhatsApp** sends the customer a formatted summary.
+
+## Why connect a database (important)
+
+By default everything is stored in the browser (`localStorage`) for testing only — records
+won't follow you to another device and could be cleared. **Before real business use,
+connect Supabase** so customers, measurements, orders, payments, staff, team and images are
+saved permanently online and shared across every device and staff phone. It's free and only
+touches one file — full instructions (table SQL, env vars, exact code) are in
+**`src/lib/store.js`**. For images at scale, use Supabase Storage or Cloudinary and save the URL.
 
