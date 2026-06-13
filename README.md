@@ -30,6 +30,11 @@ An admin dashboard manages products and orders.
 - **Dashboard summaries**, search & filters, CSV export, fabric inventory
 - **Staff roles & logins**: Owner, Manager, Sales, Tailor, Viewer
 - **WhatsApp reminders** for unpaid balance, order ready, and due-soon
+- **Customer accounts**: sign in to see cart, orders, wishlist and new-stock alerts
+- **New-stock notifications**: "What's new" feed for account holders; auto alerts when products are added or restocked
+- **Inventory in/out** movements + **fabric auto-deduction** when materials are used on a custom order
+- **Expenses** tracking and **Reports** (today / week / month / year) with sales, expenses and profit
+- **Investor ledger** (internal) + an enquiry-only public Partner page
 - **Customer accounts**: sign up / log in, see cart, wishlist, orders & new-stock alerts
 - **Investment Club**: public plans + return estimator; admin tracks investors, capital, returns & payouts
 - **Expenses** tracking and **stock in/out** with movement history
@@ -157,4 +162,30 @@ fabric stock immediately and logged (you can return it to stock too). The **Expe
 records business costs, and **Reports** rolls everything into daily/weekly/monthly/yearly
 figures (revenue actually received, sales booked, expenses, investment payouts, net, new
 customers, and sales by category), all exportable to CSV.
+
+## Customer accounts (important note on security)
+
+Shoppers can create an account (name, phone, passcode) to save their cart, track orders, see
+their wishlist and receive new-stock alerts. **This is a lightweight, front-end-only login**
+for convenience — it is not secure authentication. Do not rely on it to protect sensitive data.
+When you connect Supabase (see `src/lib/store.js`), use Supabase Auth for real, secure
+customer logins.
+
+## Investments — please read
+
+The public **Partner** page is an *expression-of-interest* form only. It does not collect money,
+does not advertise guaranteed returns, and creates no agreement — it simply sends an enquiry to
+your WhatsApp so you can discuss real, written terms directly.
+
+Offering investments to the public with promised returns is a **regulated activity** in most
+countries, including Sierra Leone (Bank of Sierra Leone). Taking deposits or promising monthly
+returns without the proper licence can be unlawful and can seriously harm both your customers and
+your business. Before promoting any investment or returns:
+
+- Get advice from a qualified lawyer and confirm the licensing position with the Bank of Sierra Leone.
+- Provide every investor with full written terms and a clear risk warning.
+- Consider lower-risk, compliant alternatives such as a savings/layaway plan or a loyalty programme.
+
+The admin **Investments** tab is an internal ledger for recording genuine, properly-agreed
+investors and payouts. It is bookkeeping only — it does not make any offering lawful by itself.
 

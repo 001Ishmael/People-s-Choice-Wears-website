@@ -374,7 +374,7 @@ export default function App() {
             </span>
           </button>
           <nav className="hidden md:flex items-center gap-6 text-sm uppercase tracking-wider">
-            {[["home", "Home"], ["shop", "Shop"], ["cosmetics", "Cosmetics"], ["invest", "Invest"], ["stylist", "Style AI"], ["blog", "Blog"], ["team", "Team"], ["custom", "Custom Order"], ["about", "About"], ["contact", "Contact"]].map(([k, l]) => (
+            {[["home", "Home"], ["shop", "Shop"], ["cosmetics", "Cosmetics"], ["invest", "Partner"], ["stylist", "Style AI"], ["blog", "Blog"], ["team", "Team"], ["custom", "Custom Order"], ["about", "About"], ["contact", "Contact"]].map(([k, l]) => (
               <button key={k} onClick={() => go(k)} style={{ color: route.page === k ? GOLD : CREAM }} className="hover:opacity-80">{l}</button>
             ))}
           </nav>
@@ -397,7 +397,7 @@ export default function App() {
         </div>
         {menuOpen && (
           <nav className="md:hidden flex flex-col px-4 pb-4 gap-1 text-sm uppercase tracking-wider" style={{ background: BLACK }}>
-            {[["home", "Home"], ["shop", "Shop"], ["cosmetics", "Cosmetics"], ["invest", "Invest"], ["stylist", "Style AI"], ["blog", "Blog"], ["team", "Team"], ["account", "My Account"], ["wishlist", "Wishlist"], ["custom", "Custom Order"], ["about", "About"], ["contact", "Contact"], ["admin", "Admin"]].map(([k, l]) => (
+            {[["home", "Home"], ["shop", "Shop"], ["cosmetics", "Cosmetics"], ["invest", "Partner"], ["stylist", "Style AI"], ["blog", "Blog"], ["team", "Team"], ["account", "My Account"], ["wishlist", "Wishlist"], ["custom", "Custom Order"], ["about", "About"], ["contact", "Contact"], ["admin", "Admin"]].map(([k, l]) => (
               <button key={k} onClick={() => go(k)} className="text-left py-2.5 border-b" style={{ color: route.page === k ? GOLD : CREAM, borderColor: `${GOLD}22` }}>{l}</button>
             ))}
             <div className="pt-3"><SocialRow color={CREAM} /></div>
@@ -1222,10 +1222,24 @@ function OrderForm({ orders, saveOrders, customers, products, staff, fabrics, sa
 
   const save = () => {
     if (!f.customer.trim() || !f.product.trim()) { showToast("Customer and product/style are required"); return; }
-    const record = { ...f, qty: Number(f.qty) || 1, price: Number(f.price) || 0, discount: Number(f.discount) || 0, total, materials: f.materials || [] };
+    const orderId = editing ? editing.orderId : genId(orders, "PCW");
+    const mats = (f.materials || []).map((m) => ({ ...m, deducted: true }));
+    const record = { ...f, qty: Number(f.qty) || 1, price: Number(f.price) || 0, discount: Number(f.discount) || 0, total, materials: mats };
+    // Auto-deduct any materials not yet taken from inventory, and log the movement
+    const toDeduct = (f.materials || []).filter((m) => !m.deducted && m.fabricId);
+    if (toDeduct.length) {
+      let nextFab = fabrics;
+      const moves = [];
+      toDeduct.forEach((m) => {
+        nextFab = nextFab.map((fb) => fb.id === m.fabricId ? { ...fb, qty: Math.max(0, Number(fb.qty) - Number(m.qty || 0)) } : fb);
+        moves.push({ id: uid(), date: todayISO(), itemId: m.fabricId, itemName: m.name, type: "out", qty: Number(m.qty || 0), reason: "Used on custom order", orderId });
+      });
+      saveFabrics(nextFab);
+      saveMovements([...moves, ...(movements || [])]);
+    }
     if (editing) saveOrders(orders.map((o) => o.id === editing.id ? { ...record, id: editing.id, orderId: editing.orderId, invoiceNo: editing.invoiceNo, createdAt: editing.createdAt } : o));
-    else saveOrders([{ ...record, id: uid(), orderId: genId(orders, "PCW"), invoiceNo: genId(orders, "INV"), createdAt: todayISO() }, ...orders]);
-    showToast(editing ? "Order updated" : "Order created"); done();
+    else saveOrders([{ ...record, id: uid(), orderId, invoiceNo: genId(orders, "INV"), createdAt: todayISO() }, ...orders]);
+    showToast(editing ? "Order updated" : "Order created"); if (toDeduct.length) showToast("Materials deducted from inventory"); done();
   };
 
   return (
@@ -2040,54 +2054,40 @@ function AccountPage({ accounts, saveAccounts, account, loginAccount, notices, o
 function monthsSince(dateStr) { if (!dateStr) return 0; const d = new Date(dateStr); const now = new Date(); return Math.max(0, (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth())); }
 
 function InvestPage({ account, go }) {
-  const [amount, setAmount] = useState(5000);
-  const [plan, setPlan] = useState({ name: "Growth", rate: 5 });
-  const plans = [{ name: "Starter", rate: 3 }, { name: "Growth", rate: 5 }, { name: "Premium", rate: 7 }];
-  const monthly = amount * plan.rate / 100;
-  const waMsg = `Hello PC Wears, I'm interested in the Investment Club.\nPlan: ${plan.name} (${plan.rate}% monthly)\nAmount: ${fmtLe(amount)}\nEstimated monthly return: ${fmtLe(monthly)}\nPlease share the details and terms.`;
+  const [amount, setAmount] = useState("");
+  const [name, setName] = useState(account ? account.name : "");
+  const [note, setNote] = useState("");
+  const waMsg = `Hello PC Wears, I would like to register interest in investing in your business.\nName: ${name || "(name)"}\nAmount I'm considering: ${amount ? fmtLe(Number(amount)) : "(to discuss)"}\n${note ? "Note: " + note + "\n" : ""}Please share the full written terms, risks and any registration details.`;
   return (
     <div>
       <section className="relative overflow-hidden" style={{ background: `radial-gradient(ellipse at 70% 20%, ${NAVY} 0%, transparent 55%), ${BLACK}` }}>
         <div className="max-w-4xl mx-auto px-4 py-16 text-center pcw-rise">
-          <span className="text-4xl">💰</span>
-          <p className="mt-3 text-xs uppercase tracking-[0.35em]" style={{ color: GOLD }}>PC Wears Investment Club</p>
-          <h1 className="mt-3 mx-auto max-w-2xl" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 600, fontSize: "clamp(2rem,5.5vw,3.2rem)", lineHeight: 1.08, color: CREAM }}>Grow with <em style={{ color: GOLD }}>PC Wears</em></h1>
-          <p className="mt-3 mx-auto max-w-lg text-sm" style={{ color: "#C2BAA9" }}>Invest in our growing fashion business and earn estimated monthly returns. Be first to hear about new stock and member-only offers.</p>
+          <span className="text-4xl">🤝</span>
+          <p className="mt-3 text-xs uppercase tracking-[0.35em]" style={{ color: GOLD }}>Partner with PC Wears</p>
+          <h1 className="mt-3 mx-auto max-w-2xl" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 600, fontSize: "clamp(2rem,5.5vw,3.2rem)", lineHeight: 1.08, color: CREAM }}>Grow <em style={{ color: GOLD }}>with us</em></h1>
+          <p className="mt-3 mx-auto max-w-lg text-sm" style={{ color: "#C2BAA9" }}>We welcome conversations with people interested in supporting and partnering in our growing fashion business. Register your interest below and we'll talk through the details directly.</p>
         </div>
         <KenteStrip />
       </section>
 
-      <div className="max-w-3xl mx-auto px-4 py-10">
-        <SectionTitle eyebrow="Choose a plan" title="Estimate your returns" />
-        <div className="grid sm:grid-cols-3 gap-3 mb-5">
-          {plans.map((p) => (
-            <button key={p.name} onClick={() => setPlan(p)} className="p-5 rounded-sm text-left transition-transform hover:-translate-y-0.5" style={{ background: plan.name === p.name ? NAVY : WHITE, color: plan.name === p.name ? CREAM : INK, border: `1px solid ${plan.name === p.name ? NAVY : CREAM_DARK}` }}>
-              <p className="text-sm uppercase tracking-widest" style={{ color: GOLD }}>{p.name}</p>
-              <p className="text-2xl font-semibold mt-1">{p.rate}%<span className="text-xs font-normal"> /month (est.)</span></p>
-            </button>
-          ))}
+      <div className="max-w-2xl mx-auto px-4 py-10">
+        <div className="p-4 rounded-sm mb-6" style={{ background: "#FFF6E0", border: `1px solid #E2C879` }}>
+          <p className="text-sm" style={{ color: INK }}><strong>Important:</strong> PC Wears does not advertise guaranteed returns. Any investment carries risk, including the possible loss of your money, and any returns depend on real business performance. Offering investments to the public is regulated and may require approval from the Bank of Sierra Leone or other authorities. We will only proceed with full written terms and once any required registration is in place. Please seek independent advice before investing.</p>
         </div>
-        <div className="p-5 rounded-sm mb-5" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}>
-          <label className="text-xs uppercase tracking-widest" style={{ color: MUTED }}>Amount to invest (Le)</label>
-          <input type="number" min="0" value={amount} onChange={(e) => setAmount(Number(e.target.value) || 0)} className="w-full px-3 py-2.5 rounded-sm text-sm mt-1 mb-4" style={{ background: CREAM, border: `1px solid ${CREAM_DARK}` }} />
-          <div className="flex flex-wrap gap-4">
-            <div><p className="text-xs uppercase tracking-widest" style={{ color: MUTED }}>Estimated monthly</p><p className="text-xl font-semibold" style={{ color: GOLD }}>{fmtLe(monthly)}</p></div>
-            <div><p className="text-xs uppercase tracking-widest" style={{ color: MUTED }}>Estimated / year</p><p className="text-xl font-semibold" style={{ color: GOLD }}>{fmtLe(monthly * 12)}</p></div>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-3 mb-6">
-          <GoldButton href={waLink(waMsg)}><WaIcon size={16} color={BLACK} /> Enquire on WhatsApp</GoldButton>
-          {!account && <GoldButton outline onClick={() => go("account")}>Create an account first</GoldButton>}
-        </div>
-        <div className="p-4 rounded-sm" style={{ background: "#FFF6E0", border: `1px solid #E2C879` }}>
-          <p className="text-sm" style={{ color: INK }}><strong>Please note:</strong> Returns are estimates, not guaranteed, and depend on business performance. Investing carries risk and your capital may be at risk. PC Wears will share full written terms before you invest. Offering investments to the public may require approval from the relevant financial authorities — please ensure you have completed any required registration. (Edit this notice to match your approved terms.)</p>
+        <SectionTitle eyebrow="Express interest" title="Register your interest" />
+        <p className="text-sm mb-4 -mt-2" style={{ color: MUTED }}>This form does not collect money or create an agreement. It simply lets us start a conversation about partnering with PC Wears.</p>
+        <div className="grid gap-3">
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className="px-3 py-2.5 rounded-sm text-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }} />
+          <input type="number" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount you're considering (Le) — optional" className="px-3 py-2.5 rounded-sm text-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }} />
+          <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="Anything you'd like to ask or tell us" className="px-3 py-2.5 rounded-sm text-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }} />
+          <GoldButton href={waLink(waMsg)}><WaIcon size={16} color={BLACK} /> Send enquiry on WhatsApp</GoldButton>
+          {!account && <button onClick={() => go("account")} className="text-xs uppercase tracking-widest" style={{ color: GOLD }}>Have an account? Sign in to track updates</button>}
         </div>
       </div>
     </div>
   );
 }
 
-/* ================= ADMIN: INVESTMENTS ================= */
 function AdminInvestments({ investments, saveInvestments, accounts, showToast, pushNotice }) {
   const [adding, setAdding] = useState(false);
   const [f, setF] = useState({ investor: "", phone: "", accountId: "", principal: "", rate: 5, startDate: todayISO(), status: "active", note: "" });
