@@ -30,6 +30,11 @@ An admin dashboard manages products and orders.
 - **Dashboard summaries**, search & filters, CSV export, fabric inventory
 - **Staff roles & logins**: Owner, Manager, Sales, Tailor, Viewer
 - **WhatsApp reminders** for unpaid balance, order ready, and due-soon
+- **Customer accounts**: sign up / log in, see cart, wishlist, orders & new-stock alerts
+- **Investment Club**: public plans + return estimator; admin tracks investors, capital, returns & payouts
+- **Expenses** tracking and **stock in/out** with movement history
+- **Auto material deduction**: materials used on a custom order are removed from inventory and logged
+- **Reports**: daily / weekly / monthly / yearly revenue, expenses, net, sales by category, CSV export
 - Loading animation, smooth scroll, mobile-first, SEO meta tags
 
 ## Business details
@@ -126,4 +131,30 @@ connect Supabase** so customers, measurements, orders, payments, staff, team and
 saved permanently online and shared across every device and staff phone. It's free and only
 touches one file — full instructions (table SQL, env vars, exact code) are in
 **`src/lib/store.js`**. For images at scale, use Supabase Storage or Cloudinary and save the URL.
+
+## Customer accounts & the Investment Club
+
+Customers can create a simple account (person icon in the header) to see their cart, saved
+items, orders, and a "What's new" feed that updates when you add products or restock. The
+**Investment Club** page lets visitors estimate monthly returns and enquire on WhatsApp; the
+admin **Investments** tab records each investor's capital, monthly rate, accrued and paid
+returns, and lets you send WhatsApp notifications.
+
+> Two honest cautions:
+> 1. **Accounts are not secure logins yet.** Without the database connected, they're
+>    convenience-only and stored per browser. Connect Supabase (with its built-in Auth) for
+>    real, secure, cross-device accounts.
+> 2. **Investments are regulated.** Taking public money for returns usually requires approval
+>    from financial authorities (in Sierra Leone, the Bank of Sierra Leone) and written terms.
+>    This module is a record-keeper, not a licence or a payment processor. Get professional
+>    legal/financial advice before accepting funds. An editable disclaimer is shown on the page.
+
+## Inventory, materials & reports
+
+Record fabric stock and Stock In / Stock Out movements under **Inventory**. When you build a
+custom order, use the **Materials used** box on the order — the quantity is deducted from
+fabric stock immediately and logged (you can return it to stock too). The **Expenses** tab
+records business costs, and **Reports** rolls everything into daily/weekly/monthly/yearly
+figures (revenue actually received, sales booked, expenses, investment payouts, net, new
+customers, and sales by category), all exportable to CSV.
 

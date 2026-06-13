@@ -93,13 +93,14 @@ const SEED_TEAM = [
 ];
 
 const ROLES = {
-  owner:   { label: "Owner / Admin", tabs: ["dashboard","customers","orders","products","inventory","team","blog","staff","settings"] },
-  manager: { label: "Manager",       tabs: ["dashboard","customers","orders","products","inventory","team","blog"] },
-  sales:   { label: "Sales Staff",   tabs: ["dashboard","customers","orders"] },
+  owner:   { label: "Owner / Admin", tabs: ["dashboard","customers","orders","products","inventory","investments","expenses","reports","team","blog","staff","settings"] },
+  manager: { label: "Manager",       tabs: ["dashboard","customers","orders","products","inventory","investments","expenses","reports","team","blog"] },
+  sales:   { label: "Sales Staff",   tabs: ["dashboard","customers","orders","expenses"] },
   tailor:  { label: "Tailor / Production", tabs: ["dashboard","orders"] },
   viewer:  { label: "Viewer",        tabs: ["dashboard","customers","orders"] },
 };
-const TAB_LABELS = { dashboard:"Dashboard", customers:"Customers", orders:"Orders", products:"Products", inventory:"Inventory", team:"Team", blog:"Blog", staff:"Staff", settings:"Settings" };
+const TAB_LABELS = { dashboard:"Dashboard", customers:"Customers", orders:"Orders", products:"Products", inventory:"Inventory", investments:"Investments", expenses:"Expenses", reports:"Reports", team:"Team", blog:"Blog", staff:"Staff", settings:"Settings" };
+const EXPENSE_CATS = ["Fabric & Materials","Stock Purchase","Rent","Utilities","Salaries","Transport/Delivery","Marketing","Equipment","Other"];
 
 const MEN_MEASURE = ["Shoulder","Chest","Waist","Hip","Sleeve length","Top length","Trouser waist","Trouser length","Thigh","Neck","Cap size"];
 const WOMEN_MEASURE = ["Bust","Waist","Hip","Shoulder","Sleeve length","Dress length","Blouse length","Skirt length","Trouser length"];
@@ -255,6 +256,12 @@ export default function App() {
   const [fabrics, setFabrics] = useState([]);
   const [role, setRole] = useState(null);
   const [staffName, setStaffName] = useState("");
+  const [accounts, setAccounts] = useState([]);
+  const [account, setAccount] = useState(null);
+  const [notices, setNotices] = useState([]);
+  const [investments, setInvestments] = useState([]);
+  const [expenses, setExpenses] = useState([]);
+  const [movements, setMovements] = useState([]);
   const [products, setProducts] = useState(null);
   const [orders, setOrders] = useState([]);
   const [cart, setCart] = useState([]);
@@ -282,6 +289,13 @@ export default function App() {
       if (tm && Array.isArray(tm) && tm.length) setTeam(tm);
       else { setTeam(SEED_TEAM); sSet("pcw2:team", SEED_TEAM, true); }
       setStaff(await sGet("pcw2:staff", [], true));
+      const accs = await sGet("pcw2:accounts", [], true); setAccounts(accs);
+      setNotices(await sGet("pcw2:notices", [], true));
+      setInvestments(await sGet("pcw2:investments", [], true));
+      setExpenses(await sGet("pcw2:expenses", [], true));
+      setMovements(await sGet("pcw2:movements", [], true));
+      const sid = await sGet("pcw2:session", null, false);
+      if (sid) { const me = accs.find((a) => a.id === sid); if (me) setAccount(me); }
       setCart(await sGet("pcw2:cart", [], false));
       setWishlist(await sGet("pcw2:wishlist", [], false));
       const pass = await sGet("pcw2:adminpass", null, true);
@@ -299,6 +313,13 @@ export default function App() {
   const saveTeam = (n) => { setTeam(n); sSet("pcw2:team", n, true); };
   const saveStaff = (n) => { setStaff(n); sSet("pcw2:staff", n, true); };
   const saveFabrics = (n) => { setFabrics(n); sSet("pcw2:fabrics", n, true); };
+  const saveAccounts = (n) => { setAccounts(n); sSet("pcw2:accounts", n, true); };
+  const saveNotices = (n) => { setNotices(n); sSet("pcw2:notices", n, true); };
+  const saveInvestments = (n) => { setInvestments(n); sSet("pcw2:investments", n, true); };
+  const saveExpenses = (n) => { setExpenses(n); sSet("pcw2:expenses", n, true); };
+  const saveMovements = (n) => { setMovements(n); sSet("pcw2:movements", n, true); };
+  const loginAccount = (a) => { setAccount(a); sSet("pcw2:session", a ? a.id : null, false); };
+  const pushNotice = (text, type = "info") => { const n = [{ id: uid(), text, type, date: todayISO() }, ...notices].slice(0, 50); setNotices(n); sSet("pcw2:notices", n, true); };
 
   const go = (page, productId = null) => { setRoute({ page, productId }); setMenuOpen(false); setQuickView(null); window.scrollTo({ top: 0 }); };
   const showToast = (m) => { setToast(m); setTimeout(() => setToast(null), 2200); };
@@ -312,6 +333,7 @@ export default function App() {
   const toggleWish = (id) => { saveWishlist(wishlist.includes(id) ? wishlist.filter((x) => x !== id) : [...wishlist, id]); };
 
   const cartCount = cart.reduce((s, c) => s + c.qty, 0);
+  const unreadNotices = account ? notices.filter((n) => !account.lastSeen || n.date > account.lastSeen).length : 0;
   const cartTotal = cart.reduce((s, c) => s + c.qty * c.price, 0);
 
   if (loading || !products) return <LoadingScreen />;
@@ -323,7 +345,7 @@ export default function App() {
     custom: "Hello PC Wears, I'd like to ask about a custom outfit.",
   }[route.page] || "Hello PC Wears, I'd like to make an inquiry.";
 
-  const pp = { products, saveProducts, orders, saveOrders, posts, savePosts, customers, saveCustomers, team, saveTeam, staff, saveStaff, fabrics, saveFabrics, role, setRole, staffName, setStaffName, cart, saveCart, wishlist, toggleWish, go, addToCart, cartTotal, showToast, adminPass, setAdminPass, isAdmin, setIsAdmin, setQuickView };
+  const pp = { products, saveProducts, orders, saveOrders, posts, savePosts, customers, saveCustomers, team, saveTeam, staff, saveStaff, fabrics, saveFabrics, accounts, saveAccounts, account, loginAccount, notices, saveNotices, pushNotice, investments, saveInvestments, expenses, saveExpenses, movements, saveMovements, role, setRole, staffName, setStaffName, cart, saveCart, wishlist, toggleWish, go, addToCart, cartTotal, showToast, adminPass, setAdminPass, isAdmin, setIsAdmin, setQuickView };
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: CREAM, color: INK, fontFamily: "'Jost', sans-serif" }}>
@@ -352,13 +374,17 @@ export default function App() {
             </span>
           </button>
           <nav className="hidden md:flex items-center gap-6 text-sm uppercase tracking-wider">
-            {[["home", "Home"], ["shop", "Shop"], ["cosmetics", "Cosmetics"], ["stylist", "Style AI"], ["blog", "Blog"], ["team", "Team"], ["custom", "Custom Order"], ["about", "About"], ["contact", "Contact"]].map(([k, l]) => (
+            {[["home", "Home"], ["shop", "Shop"], ["cosmetics", "Cosmetics"], ["invest", "Invest"], ["stylist", "Style AI"], ["blog", "Blog"], ["team", "Team"], ["custom", "Custom Order"], ["about", "About"], ["contact", "Contact"]].map(([k, l]) => (
               <button key={k} onClick={() => go(k)} style={{ color: route.page === k ? GOLD : CREAM }} className="hover:opacity-80">{l}</button>
             ))}
           </nav>
           <div className="flex items-center gap-2">
             <div className="hidden lg:block"><SocialRow color={CREAM} size={15} gap="gap-2" /></div>
             <button onClick={() => go("shop")} className="px-2.5 py-2 rounded-sm" style={{ border: `1px solid ${GOLD}55`, color: GOLD }} aria-label="Search products">🔍</button>
+            <button onClick={() => go("account")} className="relative px-2.5 py-2 rounded-sm" style={{ border: `1px solid ${GOLD}55`, color: GOLD }} aria-label="My account">
+              {account ? "\uD83D\uDC64" : "\uD83D\uDC64"}
+              {account && unreadNotices > 0 && <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full text-[11px] flex items-center justify-center font-semibold" style={{ background: GOLD, color: BLACK }}>{unreadNotices}</span>}
+            </button>
             <button onClick={() => go("wishlist")} className="relative px-2.5 py-2 rounded-sm" style={{ border: `1px solid ${GOLD}55`, color: GOLD }} aria-label="Wishlist">
               <Heart size={16} filled={wishlist.length > 0} />
               {wishlist.length > 0 && <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full text-[11px] flex items-center justify-center font-semibold" style={{ background: GOLD, color: BLACK }}>{wishlist.length}</span>}
@@ -371,7 +397,7 @@ export default function App() {
         </div>
         {menuOpen && (
           <nav className="md:hidden flex flex-col px-4 pb-4 gap-1 text-sm uppercase tracking-wider" style={{ background: BLACK }}>
-            {[["home", "Home"], ["shop", "Shop"], ["cosmetics", "Cosmetics"], ["stylist", "Style AI"], ["blog", "Blog"], ["team", "Team"], ["wishlist", "Wishlist"], ["custom", "Custom Order"], ["about", "About"], ["contact", "Contact"], ["admin", "Admin"]].map(([k, l]) => (
+            {[["home", "Home"], ["shop", "Shop"], ["cosmetics", "Cosmetics"], ["invest", "Invest"], ["stylist", "Style AI"], ["blog", "Blog"], ["team", "Team"], ["account", "My Account"], ["wishlist", "Wishlist"], ["custom", "Custom Order"], ["about", "About"], ["contact", "Contact"], ["admin", "Admin"]].map(([k, l]) => (
               <button key={k} onClick={() => go(k)} className="text-left py-2.5 border-b" style={{ color: route.page === k ? GOLD : CREAM, borderColor: `${GOLD}22` }}>{l}</button>
             ))}
             <div className="pt-3"><SocialRow color={CREAM} /></div>
@@ -389,6 +415,8 @@ export default function App() {
         {route.page === "blog" && <BlogPage {...pp} />}
         {route.page === "post" && <BlogPostPage {...pp} postId={route.productId} />}
         {route.page === "team" && <TeamPage {...pp} />}
+        {route.page === "account" && <AccountPage {...pp} />}
+        {route.page === "invest" && <InvestPage {...pp} />}
         {route.page === "wishlist" && <WishlistPage {...pp} />}
         {route.page === "product" && <ProductPage {...pp} productId={route.productId} />}
         {route.page === "cart" && <CartPage {...pp} setDrawerOpen={setDrawerOpen} />}
@@ -979,6 +1007,9 @@ function AdminDashboard(props) {
       {tab === "orders" && <AdminOrders {...props} readOnly={readOnly} />}
       {tab === "products" && <AdminProducts {...props} />}
       {tab === "inventory" && <AdminInventory {...props} />}
+      {tab === "investments" && <AdminInvestments {...props} />}
+      {tab === "expenses" && <AdminExpenses {...props} />}
+      {tab === "reports" && <AdminReports {...props} />}
       {tab === "team" && <AdminTeam {...props} />}
       {tab === "blog" && <AdminBlog {...props} />}
       {tab === "staff" && <AdminStaff {...props} />}
@@ -986,9 +1017,9 @@ function AdminDashboard(props) {
     </div>
   );
 }
-function AdminProducts({ products, saveProducts, showToast }) {
+function AdminProducts({ products, saveProducts, showToast, pushNotice }) {
   const [editing, setEditing] = useState(null);
-  if (editing) return <ProductForm products={products} saveProducts={saveProducts} showToast={showToast} editing={editing === "new" ? null : editing} done={() => setEditing(null)} />;
+  if (editing) return <ProductForm products={products} saveProducts={saveProducts} showToast={showToast} pushNotice={pushNotice} editing={editing === "new" ? null : editing} done={() => setEditing(null)} />;
   const toggle = (id, field) => saveProducts(products.map((p) => p.id === id ? { ...p, [field]: !p[field] } : p));
   const setStock = (id, v) => saveProducts(products.map((p) => p.id === id ? { ...p, stock: v } : p));
   const remove = (id) => { if (window.confirm("Delete this product? This cannot be undone.")) { saveProducts(products.filter((p) => p.id !== id)); showToast("Product deleted"); } };
@@ -1016,7 +1047,7 @@ function AdminProducts({ products, saveProducts, showToast }) {
     </div>
   );
 }
-function ProductForm({ products, saveProducts, showToast, editing, done }) {
+function ProductForm({ products, saveProducts, showToast, editing, done, pushNotice }) {
   const [f, setF] = useState(editing || { name: "", category: CATEGORIES[0].id, price: "", description: "", sizes: [], colors: [], stock: "available", featured: false, newArrival: true, bestSeller: false, image: null });
   const [sizesText, setSizesText] = useState((editing?.sizes || []).join(", "));
   const [colorsText, setColorsText] = useState((editing?.colors || []).join(", "));
@@ -1026,8 +1057,13 @@ function ProductForm({ products, saveProducts, showToast, editing, done }) {
   const save = () => {
     if (!f.name.trim() || !f.price) { showToast("Name and price are required"); return; }
     const parsed = { ...f, price: Number(f.price), sizes: sizesText.split(",").map((s) => s.trim()).filter(Boolean), colors: colorsText.split(",").map((s) => s.trim()).filter(Boolean) };
-    if (editing) saveProducts(products.map((p) => p.id === editing.id ? { ...parsed, id: editing.id } : p));
-    else saveProducts([{ ...parsed, id: uid() }, ...products]);
+    if (editing) {
+      saveProducts(products.map((p) => p.id === editing.id ? { ...parsed, id: editing.id } : p));
+      if (pushNotice && editing.stock !== "available" && parsed.stock === "available") pushNotice(`Back in stock: ${parsed.name}`, "stock");
+    } else {
+      saveProducts([{ ...parsed, id: uid() }, ...products]);
+      if (pushNotice) pushNotice(`New arrival: ${parsed.name} \u2014 ${fmtLe(parsed.price)}`, "product");
+    }
     showToast(editing ? "Product updated" : "Product added"); done();
   };
   const check = (k, l) => <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" checked={!!f[k]} onChange={(e) => setF({ ...f, [k]: e.target.checked })} style={{ accentColor: GOLD }} /> {l}</label>;
@@ -1052,7 +1088,7 @@ function ProductForm({ products, saveProducts, showToast, editing, done }) {
   );
 }
 /* ================= ADMIN: ORDERS (full) ================= */
-function AdminOrders({ orders, saveOrders, customers, products, staff, showToast, readOnly }) {
+function AdminOrders({ orders, saveOrders, customers, products, staff, fabrics, saveFabrics, movements, saveMovements, showToast, readOnly }) {
   const [editing, setEditing] = useState(null);
   const [invoiceFor, setInvoiceFor] = useState(null);
   const [search, setSearch] = useState("");
@@ -1062,7 +1098,7 @@ function AdminOrders({ orders, saveOrders, customers, products, staff, showToast
   const [tailorF, setTailorF] = useState("all");
   const [from, setFrom] = useState(""); const [to, setTo] = useState("");
 
-  if (editing) return <OrderForm orders={orders} saveOrders={saveOrders} customers={customers} products={products} staff={staff} showToast={showToast} editing={editing === "new" ? null : editing} done={() => setEditing(null)} />;
+  if (editing) return <OrderForm orders={orders} saveOrders={saveOrders} customers={customers} products={products} staff={staff} fabrics={fabrics} saveFabrics={saveFabrics} movements={movements} saveMovements={saveMovements} showToast={showToast} editing={editing === "new" ? null : editing} done={() => setEditing(null)} />;
   if (invoiceFor) return <InvoiceDoc order={invoiceFor} customers={customers} kind={invoiceFor._kind || "invoice"} onClose={() => setInvoiceFor(null)} />;
 
   const tailors = [...new Set(orders.map((o) => o.tailor).filter(Boolean))];
@@ -1144,9 +1180,10 @@ function AdminOrders({ orders, saveOrders, customers, products, staff, showToast
   );
 }
 
-function OrderForm({ orders, saveOrders, customers, products, staff, showToast, editing, done }) {
-  const base = editing || { customerId: "", customer: "", phone: "", category: "africana", product: "", styleName: "", fabricType: "", fabricColor: "", qty: 1, price: "", discount: "", status: "pending", deliveryDate: "", tailor: "", instructions: "", fulfil: "delivery", refImage: null, payments: [] };
-  const [f, setF] = useState({ ...base, payments: base.payments || [] });
+function OrderForm({ orders, saveOrders, customers, products, staff, fabrics, saveFabrics, movements, saveMovements, showToast, editing, done }) {
+  const base = editing || { customerId: "", customer: "", phone: "", category: "africana", product: "", styleName: "", fabricType: "", fabricColor: "", qty: 1, price: "", discount: "", status: "pending", deliveryDate: "", tailor: "", instructions: "", fulfil: "delivery", refImage: null, payments: [], materials: [] };
+  const [f, setF] = useState({ ...base, payments: base.payments || [], materials: base.materials || [] });
+  const [mat, setMat] = useState({ fabricId: "", qty: "" });
   const [pay, setPay] = useState({ amount: "", type: "Deposit", method: "Cash", staff: "", note: "" });
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const inputStyle = { background: WHITE, border: `1px solid ${CREAM_DARK}` };
@@ -1164,11 +1201,28 @@ function OrderForm({ orders, saveOrders, customers, products, staff, showToast, 
     setPay({ amount: "", type: "Balance Payment", method: "Cash", staff: pay.staff, note: "" });
   };
   const removePayment = (id) => setF({ ...f, payments: f.payments.filter((p) => p.id !== id) });
+  const useMaterial = () => {
+    const fab = (fabrics || []).find((x) => x.id === mat.fabricId);
+    if (!fab) { showToast("Choose a material"); return; }
+    const q = Number(mat.qty); if (!q || q <= 0) { showToast("Enter quantity used"); return; }
+    if (q > Number(fab.qty)) { showToast(`Only ${fab.qty} ${fab.unit || ""} of ${fab.name} in stock`); return; }
+    saveFabrics(fabrics.map((x) => x.id === fab.id ? { ...x, qty: Number(x.qty) - q } : x));
+    saveMovements([{ id: uid(), date: todayISO(), itemId: fab.id, itemName: `${fab.name}${fab.color ? " · " + fab.color : ""}`, type: "out", qty: q, reason: "Used on custom order", orderId: editing ? editing.orderId : "(new)" }, ...(movements || [])]);
+    setF({ ...f, materials: [...(f.materials || []), { id: uid(), fabricId: fab.id, name: `${fab.name}${fab.color ? " · " + fab.color : ""}`, qty: q, unit: fab.unit || "" }] });
+    setMat({ fabricId: "", qty: "" });
+    showToast("Material deducted from inventory");
+  };
+  const returnMaterial = (m) => {
+    saveFabrics(fabrics.map((x) => x.id === m.fabricId ? { ...x, qty: Number(x.qty) + Number(m.qty) } : x));
+    saveMovements([{ id: uid(), date: todayISO(), itemId: m.fabricId, itemName: m.name, type: "in", qty: Number(m.qty), reason: "Returned to stock", orderId: editing ? editing.orderId : "(new)" }, ...(movements || [])]);
+    setF({ ...f, materials: f.materials.filter((x) => x.id !== m.id) });
+    showToast("Material returned to inventory");
+  };
   const paid = (f.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
 
   const save = () => {
     if (!f.customer.trim() || !f.product.trim()) { showToast("Customer and product/style are required"); return; }
-    const record = { ...f, qty: Number(f.qty) || 1, price: Number(f.price) || 0, discount: Number(f.discount) || 0, total };
+    const record = { ...f, qty: Number(f.qty) || 1, price: Number(f.price) || 0, discount: Number(f.discount) || 0, total, materials: f.materials || [] };
     if (editing) saveOrders(orders.map((o) => o.id === editing.id ? { ...record, id: editing.id, orderId: editing.orderId, invoiceNo: editing.invoiceNo, createdAt: editing.createdAt } : o));
     else saveOrders([{ ...record, id: uid(), orderId: genId(orders, "PCW"), invoiceNo: genId(orders, "INV"), createdAt: todayISO() }, ...orders]);
     showToast(editing ? "Order updated" : "Order created"); done();
@@ -1223,6 +1277,27 @@ function OrderForm({ orders, saveOrders, customers, products, staff, showToast, 
             <input value={pay.staff} onChange={(e) => setPay({ ...pay, staff: e.target.value })} placeholder="Received by" className="px-2 py-2 rounded-sm text-sm" style={inputStyle} />
             <GoldButton small onClick={addPayment}>Add</GoldButton>
           </div>
+        </div>
+
+        <div className="p-4 rounded-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}>
+          <p className="text-xs uppercase tracking-widest mb-1" style={{ color: GOLD }}>Materials used (auto-deducts from inventory)</p>
+          <p className="text-xs mb-3" style={{ color: MUTED }}>For custom outfits: record the fabric/material used. It is removed from stock immediately and logged in Inventory.</p>
+          {(f.materials || []).map((m) => (
+            <div key={m.id} className="flex items-center justify-between text-sm py-1.5 border-b" style={{ borderColor: CREAM_DARK }}>
+              <span>{m.name} \u2014 {m.qty} {m.unit}</span>
+              <button onClick={() => returnMaterial(m)} className="text-xs underline" style={{ color: "#C0392B" }}>Return to stock</button>
+            </div>
+          ))}
+          {(fabrics || []).length === 0 ? <p className="text-xs mt-2" style={{ color: MUTED }}>No materials in inventory yet. Add fabric stock under the Inventory tab first.</p> : (
+            <div className="grid sm:grid-cols-3 gap-2 items-end mt-3">
+              <select value={mat.fabricId} onChange={(e) => setMat({ ...mat, fabricId: e.target.value })} className="px-2 py-2 rounded-sm text-sm" style={inputStyle}>
+                <option value="">Choose material…</option>
+                {fabrics.map((x) => <option key={x.id} value={x.id}>{x.name}{x.color ? ` · ${x.color}` : ""} ({x.qty} {x.unit || ""})</option>)}
+              </select>
+              <input type="number" min="0" step="0.5" value={mat.qty} onChange={(e) => setMat({ ...mat, qty: e.target.value })} placeholder="Qty used" className="px-2 py-2 rounded-sm text-sm" style={inputStyle} />
+              <GoldButton small onClick={useMaterial}>Use material</GoldButton>
+            </div>
+          )}
         </div>
 
         <div className="flex gap-3"><GoldButton onClick={save}>{editing ? "Save Order" : "Create Order"}</GoldButton><GoldButton outline onClick={done}>Cancel</GoldButton></div>
@@ -1798,37 +1873,393 @@ function AdminStaff({ staff, saveStaff, showToast }) {
 }
 
 /* ================= ADMIN: INVENTORY (fabric stock) ================= */
-function AdminInventory({ fabrics, saveFabrics, products, showToast }) {
+function AdminInventory({ fabrics, saveFabrics, products, movements, saveMovements, showToast }) {
   const [f, setF] = useState({ name: "", color: "", qty: "", unit: "yards" });
+  const [mv, setMv] = useState({ fabricId: "", type: "in", qty: "", reason: "" });
   const inputStyle = { background: WHITE, border: `1px solid ${CREAM_DARK}` };
-  const add = () => { if (!f.name.trim()) { showToast("Fabric name required"); return; } saveFabrics([{ ...f, id: uid(), qty: Number(f.qty) || 0 }, ...fabrics]); setF({ name: "", color: "", qty: "", unit: "yards" }); showToast("Fabric added"); };
-  const adjust = (id, d) => saveFabrics(fabrics.map((x) => x.id === id ? { ...x, qty: Math.max(0, Number(x.qty) + d) } : x));
-  const remove = (id) => saveFabrics(fabrics.filter((x) => x.id !== id));
+  const add = () => { if (!f.name.trim()) { showToast("Fabric name required"); return; } const item = { ...f, id: uid(), qty: Number(f.qty) || 0 }; saveFabrics([item, ...fabrics]); if (Number(f.qty) > 0) saveMovements([{ id: uid(), date: todayISO(), itemId: item.id, itemName: `${item.name}${item.color ? " · " + item.color : ""}`, type: "in", qty: Number(f.qty), reason: "Initial stock" }, ...(movements || [])]); setF({ name: "", color: "", qty: "", unit: "yards" }); showToast("Fabric added"); };
+  const remove = (id) => { if (window.confirm("Delete this fabric record?")) saveFabrics(fabrics.filter((x) => x.id !== id)); };
+  const record = () => {
+    const fab = fabrics.find((x) => x.id === mv.fabricId); const q = Number(mv.qty);
+    if (!fab || !q || q <= 0) { showToast("Choose item and quantity"); return; }
+    if (mv.type === "out" && q > Number(fab.qty)) { showToast("Not enough in stock"); return; }
+    saveFabrics(fabrics.map((x) => x.id === fab.id ? { ...x, qty: Number(x.qty) + (mv.type === "in" ? q : -q) } : x));
+    saveMovements([{ id: uid(), date: todayISO(), itemId: fab.id, itemName: `${fab.name}${fab.color ? " · " + fab.color : ""}`, type: mv.type, qty: q, reason: mv.reason || (mv.type === "in" ? "Stock in" : "Stock out") }, ...(movements || [])]);
+    setMv({ fabricId: "", type: "in", qty: "", reason: "" }); showToast("Movement recorded");
+  };
   const lowStock = products.filter((p) => p.stock === "sold_out").length;
+  const exportCsv = () => downloadCSV("pcwears-stock-movements.csv", [["Date","Item","Type","Qty","Reason","Order"], ...(movements || []).map((m) => [m.date, m.itemName, m.type, m.qty, m.reason, m.orderId || ""])]);
   return (
     <div className="max-w-3xl">
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         <StatCard label="Fabric records" value={fabrics.length} />
+        <StatCard label="Total fabric qty" value={fabrics.reduce((s, x) => s + Number(x.qty || 0), 0)} />
         <StatCard label="Products" value={products.length} />
         <StatCard label="Sold-out products" value={lowStock} accent="#F1948A" />
       </div>
-      <p className="text-sm mb-2" style={{ color: GOLD }}>Fabric stock</p>
-      <div className="p-4 rounded-sm mb-4 grid sm:grid-cols-5 gap-2 items-end" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}>
+
+      <p className="text-sm mb-2" style={{ color: GOLD }}>Add fabric / material</p>
+      <div className="p-4 rounded-sm mb-5 grid sm:grid-cols-5 gap-2 items-end" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}>
         <input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="Fabric name" className="px-3 py-2.5 rounded-sm text-sm sm:col-span-2" style={inputStyle} />
         <input value={f.color} onChange={(e) => setF({ ...f, color: e.target.value })} placeholder="Color" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
         <input type="number" value={f.qty} onChange={(e) => setF({ ...f, qty: e.target.value })} placeholder="Qty" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
         <GoldButton small onClick={add}>Add</GoldButton>
       </div>
-      <div className="grid gap-2">
-        {!fabrics.length && <p className="text-sm" style={{ color: MUTED }}>No fabric stock recorded yet. Product stock status is managed under the Products tab.</p>}
+
+      <p className="text-sm mb-2" style={{ color: GOLD }}>Current stock</p>
+      <div className="grid gap-2 mb-6">
+        {!fabrics.length && <p className="text-sm" style={{ color: MUTED }}>No fabric stock yet. Product stock status is managed under Products.</p>}
         {fabrics.map((x) => (
           <div key={x.id} className="flex items-center gap-3 p-3 rounded-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}>
-            <div className="flex-1"><p className="font-medium text-sm">{x.name}{x.color ? ` · ${x.color}` : ""}</p><p className="text-xs" style={{ color: x.qty <= 2 ? "#C0392B" : MUTED }}>{x.qty} {x.unit} in stock{x.qty <= 2 ? " · low!" : ""}</p></div>
-            <div className="inline-flex items-center rounded-sm" style={{ border: `1px solid ${CREAM_DARK}` }}><button onClick={() => adjust(x.id, -1)} className="px-3 py-1.5" aria-label="Decrease">−</button><span className="px-2 text-sm">{x.qty}</span><button onClick={() => adjust(x.id, 1)} className="px-3 py-1.5" aria-label="Increase">+</button></div>
+            <div className="flex-1"><p className="font-medium text-sm">{x.name}{x.color ? ` · ${x.color}` : ""}</p><p className="text-xs" style={{ color: Number(x.qty) <= 2 ? "#C0392B" : MUTED }}>{x.qty} {x.unit}{Number(x.qty) <= 2 ? " · low!" : ""}</p></div>
             <button onClick={() => remove(x.id)} className="px-3 py-2 text-xs rounded-sm uppercase tracking-wider" style={{ border: "1.5px solid #C0392B", color: "#C0392B" }}>Delete</button>
           </div>
         ))}
       </div>
+
+      <p className="text-sm mb-2" style={{ color: GOLD }}>Record stock movement (in / out)</p>
+      <div className="p-4 rounded-sm mb-5 grid sm:grid-cols-5 gap-2 items-end" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}>
+        <select value={mv.fabricId} onChange={(e) => setMv({ ...mv, fabricId: e.target.value })} className="px-2 py-2.5 rounded-sm text-sm sm:col-span-2" style={inputStyle}><option value="">Choose item…</option>{fabrics.map((x) => <option key={x.id} value={x.id}>{x.name}{x.color ? ` · ${x.color}` : ""}</option>)}</select>
+        <select value={mv.type} onChange={(e) => setMv({ ...mv, type: e.target.value })} className="px-2 py-2.5 rounded-sm text-sm" style={inputStyle}><option value="in">Stock In</option><option value="out">Stock Out</option></select>
+        <input type="number" value={mv.qty} onChange={(e) => setMv({ ...mv, qty: e.target.value })} placeholder="Qty" className="px-2 py-2.5 rounded-sm text-sm" style={inputStyle} />
+        <GoldButton small onClick={record}>Record</GoldButton>
+        <input value={mv.reason} onChange={(e) => setMv({ ...mv, reason: e.target.value })} placeholder="Reason (optional)" className="px-2 py-2.5 rounded-sm text-sm sm:col-span-5" style={inputStyle} />
+      </div>
+
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-sm" style={{ color: GOLD }}>Movement history</p>
+        {(movements || []).length > 0 && <button onClick={exportCsv} className="text-xs uppercase tracking-widest" style={{ color: GOLD }}>Export CSV</button>}
+      </div>
+      <div className="grid gap-1.5">
+        {!(movements || []).length && <p className="text-sm" style={{ color: MUTED }}>No movements yet. Materials used on custom orders also appear here automatically.</p>}
+        {(movements || []).slice(0, 40).map((m) => (
+          <div key={m.id} className="flex items-center justify-between p-2.5 rounded-sm text-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}`, borderLeft: `4px solid ${m.type === "in" ? "#2E7D32" : "#C0392B"}` }}>
+            <span>{m.itemName} <span style={{ color: m.type === "in" ? "#2E7D32" : "#C0392B" }}>{m.type === "in" ? "+" : "−"}{m.qty}</span></span>
+            <span className="text-xs" style={{ color: MUTED }}>{m.reason}{m.orderId ? ` · ${m.orderId}` : ""} · {m.date}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ================= CUSTOMER ACCOUNT (public) ================= */
+function AccountPage({ accounts, saveAccounts, account, loginAccount, notices, orders, investments, wishlist, products, cart, cartTotal, go, showToast }) {
+  const [mode, setMode] = useState("login");
+  const [form, setForm] = useState({ name: "", email: "", phone: "", passcode: "" });
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+  const inputStyle = { background: WHITE, border: `1px solid ${CREAM_DARK}` };
+
+  if (!account) {
+    const doSignup = () => {
+      if (!form.name.trim() || !form.email.trim() || !form.passcode.trim()) { showToast("Name, email and passcode required"); return; }
+      if (accounts.some((a) => a.email.toLowerCase() === form.email.trim().toLowerCase())) { showToast("An account with that email exists — please log in"); return; }
+      const acc = { id: uid(), name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim(), passcode: form.passcode, createdAt: todayISO(), lastSeen: todayISO() };
+      saveAccounts([acc, ...accounts]); loginAccount(acc); showToast("Welcome to PC Wears!");
+    };
+    const doLogin = () => {
+      const acc = accounts.find((a) => a.email.toLowerCase() === form.email.trim().toLowerCase() && a.passcode === form.passcode);
+      if (!acc) { showToast("Email or passcode is incorrect"); return; }
+      loginAccount({ ...acc, lastSeen: todayISO() });
+      saveAccounts(accounts.map((a) => a.id === acc.id ? { ...a, lastSeen: todayISO() } : a));
+    };
+    return (
+      <div className="max-w-sm mx-auto px-4 py-16">
+        <div className="text-center mb-6"><Crest size={52} /><h1 className="mt-3" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 700, fontSize: 28 }}>{mode === "login" ? "Welcome back" : "Create your account"}</h1><p className="text-xs mt-1" style={{ color: MUTED }}>Save your cart, track orders and get new-stock alerts.</p></div>
+        <div className="grid gap-3">
+          {mode === "signup" && <input value={form.name} onChange={set("name")} placeholder="Full name" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />}
+          <input value={form.email} onChange={set("email")} placeholder="Email" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
+          {mode === "signup" && <input value={form.phone} onChange={set("phone")} placeholder="Phone / WhatsApp (optional)" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />}
+          <input type="password" value={form.passcode} onChange={set("passcode")} placeholder="Passcode" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
+          <GoldButton full onClick={mode === "login" ? doLogin : doSignup}>{mode === "login" ? "Log In" : "Sign Up"}</GoldButton>
+          <button onClick={() => setMode(mode === "login" ? "signup" : "login")} className="text-xs uppercase tracking-widest" style={{ color: GOLD }}>{mode === "login" ? "New here? Create an account" : "Already have an account? Log in"}</button>
+        </div>
+        <p className="text-[11px] mt-5 text-center" style={{ color: MUTED }}>Note: simple account for convenience — please don't reuse an important password. Secure accounts arrive when the online database is connected.</p>
+      </div>
+    );
+  }
+
+  const myOrders = orders.filter((o) => (o.phone && account.phone && o.phone === account.phone) || (o.customer && o.customer.toLowerCase() === account.name.toLowerCase()));
+  const myInvest = investments.filter((i) => (i.accountId === account.id) || (i.phone && account.phone && i.phone === account.phone));
+  const saved = products.filter((p) => wishlist.includes(p.id));
+  const markSeen = () => { const upd = { ...account, lastSeen: todayISO() }; loginAccount(upd); saveAccounts(accounts.map((a) => a.id === account.id ? upd : a)); };
+
+  return (
+    <div className="max-w-4xl mx-auto px-4 py-10">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+        <SectionTitle eyebrow={`Hello, ${account.name.split(" ")[0]}`} title="My Account" />
+        <GoldButton small outline onClick={() => loginAccount(null)}>Log Out</GoldButton>
+      </div>
+
+      <div className="grid sm:grid-cols-3 gap-3 mb-6">
+        <div className="p-4 rounded-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}><p className="text-xs uppercase tracking-widest" style={{ color: MUTED }}>Cart</p><p className="text-xl font-semibold mt-1">{cart.reduce((s, c) => s + c.qty, 0)} item(s)</p><p className="text-sm" style={{ color: GOLD }}>{fmtLe(cartTotal)}</p><button onClick={() => go("cart")} className="text-xs uppercase tracking-widest mt-2" style={{ color: GOLD }}>View cart →</button></div>
+        <div className="p-4 rounded-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}><p className="text-xs uppercase tracking-widest" style={{ color: MUTED }}>Saved items</p><p className="text-xl font-semibold mt-1">{saved.length}</p><button onClick={() => go("wishlist")} className="text-xs uppercase tracking-widest mt-2" style={{ color: GOLD }}>View wishlist →</button></div>
+        <div className="p-4 rounded-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}><p className="text-xs uppercase tracking-widest" style={{ color: MUTED }}>My orders</p><p className="text-xl font-semibold mt-1">{myOrders.length}</p></div>
+      </div>
+
+      <div className="flex items-center justify-between mb-2"><h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 700, fontSize: 20 }}>What's new</h3><button onClick={markSeen} className="text-xs uppercase tracking-widest" style={{ color: GOLD }}>Mark all read</button></div>
+      <div className="grid gap-2 mb-6">
+        {!notices.length && <p className="text-sm" style={{ color: MUTED }}>No updates yet. We'll let you know here when new items and restocks arrive.</p>}
+        {notices.slice(0, 12).map((n) => (
+          <div key={n.id} className="p-3 rounded-sm flex items-center justify-between" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}`, borderLeft: `4px solid ${GOLD}` }}>
+            <span className="text-sm">{n.type === "stock" ? "🔄 " : n.type === "product" ? "✨ " : n.type === "invest" ? "💰 " : "📢 "}{n.text}</span>
+            <span className="text-xs" style={{ color: MUTED }}>{n.date}</span>
+          </div>
+        ))}
+      </div>
+
+      {myInvest.length > 0 && (
+        <div className="mb-6">
+          <h3 className="mb-2" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 700, fontSize: 20 }}>My investments</h3>
+          <div className="grid gap-2">
+            {myInvest.map((i) => { const months = monthsSince(i.startDate); const monthly = Number(i.principal) * Number(i.rate || 0) / 100; const paid = (i.payouts || []).reduce((s, p) => s + Number(p.amount || 0), 0); return (
+              <div key={i.id} className="p-4 rounded-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}>
+                <p className="text-sm font-medium">{fmtLe(i.principal)} invested · {i.rate}% monthly</p>
+                <p className="text-xs mt-1" style={{ color: MUTED }}>Since {i.startDate} ({months} month{months !== 1 ? "s" : ""}) · est. {fmtLe(monthly)}/month · returns paid {fmtLe(paid)} · status {i.status || "active"}</p>
+              </div>
+            ); })}
+          </div>
+        </div>
+      )}
+
+      <h3 className="mb-2" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 700, fontSize: 20 }}>My orders</h3>
+      <div className="grid gap-2">
+        {!myOrders.length && <p className="text-sm" style={{ color: MUTED }}>No orders linked to your details yet. Orders you place by WhatsApp will be matched by your name or phone number.</p>}
+        {myOrders.map((o) => (
+          <div key={o.id} className="p-3 rounded-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}`, borderLeft: `4px solid ${ORDER_STATUS_COLOR[o.status || "pending"]}` }}>
+            <p className="text-sm font-medium">{o.orderId || ""} · {o.product}</p>
+            <p className="text-xs mt-0.5" style={{ color: MUTED }}>Qty {o.qty} · {fmtLe(orderTotal(o))} · {(ORDER_STATUS.find(([v]) => v === (o.status || "pending")) || [])[1]} · balance {fmtLe(orderBalance(o))}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ================= INVESTMENT (public) ================= */
+function monthsSince(dateStr) { if (!dateStr) return 0; const d = new Date(dateStr); const now = new Date(); return Math.max(0, (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth())); }
+
+function InvestPage({ account, go }) {
+  const [amount, setAmount] = useState(5000);
+  const [plan, setPlan] = useState({ name: "Growth", rate: 5 });
+  const plans = [{ name: "Starter", rate: 3 }, { name: "Growth", rate: 5 }, { name: "Premium", rate: 7 }];
+  const monthly = amount * plan.rate / 100;
+  const waMsg = `Hello PC Wears, I'm interested in the Investment Club.\nPlan: ${plan.name} (${plan.rate}% monthly)\nAmount: ${fmtLe(amount)}\nEstimated monthly return: ${fmtLe(monthly)}\nPlease share the details and terms.`;
+  return (
+    <div>
+      <section className="relative overflow-hidden" style={{ background: `radial-gradient(ellipse at 70% 20%, ${NAVY} 0%, transparent 55%), ${BLACK}` }}>
+        <div className="max-w-4xl mx-auto px-4 py-16 text-center pcw-rise">
+          <span className="text-4xl">💰</span>
+          <p className="mt-3 text-xs uppercase tracking-[0.35em]" style={{ color: GOLD }}>PC Wears Investment Club</p>
+          <h1 className="mt-3 mx-auto max-w-2xl" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 600, fontSize: "clamp(2rem,5.5vw,3.2rem)", lineHeight: 1.08, color: CREAM }}>Grow with <em style={{ color: GOLD }}>PC Wears</em></h1>
+          <p className="mt-3 mx-auto max-w-lg text-sm" style={{ color: "#C2BAA9" }}>Invest in our growing fashion business and earn estimated monthly returns. Be first to hear about new stock and member-only offers.</p>
+        </div>
+        <KenteStrip />
+      </section>
+
+      <div className="max-w-3xl mx-auto px-4 py-10">
+        <SectionTitle eyebrow="Choose a plan" title="Estimate your returns" />
+        <div className="grid sm:grid-cols-3 gap-3 mb-5">
+          {plans.map((p) => (
+            <button key={p.name} onClick={() => setPlan(p)} className="p-5 rounded-sm text-left transition-transform hover:-translate-y-0.5" style={{ background: plan.name === p.name ? NAVY : WHITE, color: plan.name === p.name ? CREAM : INK, border: `1px solid ${plan.name === p.name ? NAVY : CREAM_DARK}` }}>
+              <p className="text-sm uppercase tracking-widest" style={{ color: GOLD }}>{p.name}</p>
+              <p className="text-2xl font-semibold mt-1">{p.rate}%<span className="text-xs font-normal"> /month (est.)</span></p>
+            </button>
+          ))}
+        </div>
+        <div className="p-5 rounded-sm mb-5" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}>
+          <label className="text-xs uppercase tracking-widest" style={{ color: MUTED }}>Amount to invest (Le)</label>
+          <input type="number" min="0" value={amount} onChange={(e) => setAmount(Number(e.target.value) || 0)} className="w-full px-3 py-2.5 rounded-sm text-sm mt-1 mb-4" style={{ background: CREAM, border: `1px solid ${CREAM_DARK}` }} />
+          <div className="flex flex-wrap gap-4">
+            <div><p className="text-xs uppercase tracking-widest" style={{ color: MUTED }}>Estimated monthly</p><p className="text-xl font-semibold" style={{ color: GOLD }}>{fmtLe(monthly)}</p></div>
+            <div><p className="text-xs uppercase tracking-widest" style={{ color: MUTED }}>Estimated / year</p><p className="text-xl font-semibold" style={{ color: GOLD }}>{fmtLe(monthly * 12)}</p></div>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-3 mb-6">
+          <GoldButton href={waLink(waMsg)}><WaIcon size={16} color={BLACK} /> Enquire on WhatsApp</GoldButton>
+          {!account && <GoldButton outline onClick={() => go("account")}>Create an account first</GoldButton>}
+        </div>
+        <div className="p-4 rounded-sm" style={{ background: "#FFF6E0", border: `1px solid #E2C879` }}>
+          <p className="text-sm" style={{ color: INK }}><strong>Please note:</strong> Returns are estimates, not guaranteed, and depend on business performance. Investing carries risk and your capital may be at risk. PC Wears will share full written terms before you invest. Offering investments to the public may require approval from the relevant financial authorities — please ensure you have completed any required registration. (Edit this notice to match your approved terms.)</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ================= ADMIN: INVESTMENTS ================= */
+function AdminInvestments({ investments, saveInvestments, accounts, showToast, pushNotice }) {
+  const [adding, setAdding] = useState(false);
+  const [f, setF] = useState({ investor: "", phone: "", accountId: "", principal: "", rate: 5, startDate: todayISO(), status: "active", note: "" });
+  const [payout, setPayout] = useState({});
+  const inputStyle = { background: WHITE, border: `1px solid ${CREAM_DARK}` };
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const save = () => {
+    if (!f.investor.trim() || !f.principal) { showToast("Investor name and amount are required"); return; }
+    saveInvestments([{ ...f, id: uid(), principal: Number(f.principal), rate: Number(f.rate) || 0, payouts: [] }, ...investments]);
+    setF({ investor: "", phone: "", accountId: "", principal: "", rate: 5, startDate: todayISO(), status: "active", note: "" }); setAdding(false); showToast("Investment recorded");
+  };
+  const addPayout = (id) => {
+    const amt = Number(payout[id]); if (!amt) { showToast("Enter payout amount"); return; }
+    saveInvestments(investments.map((i) => i.id === id ? { ...i, payouts: [...(i.payouts || []), { id: uid(), amount: amt, date: todayISO() }] } : i));
+    setPayout({ ...payout, [id]: "" }); showToast("Return payout recorded");
+  };
+  const remove = (id) => { if (window.confirm("Delete this investment?")) saveInvestments(investments.filter((i) => i.id !== id)); };
+  const setStatus = (id, status) => saveInvestments(investments.map((i) => i.id === id ? { ...i, status } : i));
+  const totalIn = investments.reduce((s, i) => s + Number(i.principal || 0), 0);
+  const totalPaid = investments.reduce((s, i) => s + (i.payouts || []).reduce((a, p) => a + Number(p.amount || 0), 0), 0);
+  const dueThisMonth = investments.filter((i) => (i.status || "active") === "active").reduce((s, i) => s + Number(i.principal) * Number(i.rate || 0) / 100, 0);
+
+  return (
+    <div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+        <StatCard label="Investors" value={investments.length} />
+        <StatCard label="Capital invested" value={fmtLe(totalIn)} />
+        <StatCard label="Returns paid" value={fmtLe(totalPaid)} accent="#7DCEA0" />
+        <StatCard label="Est. due / month" value={fmtLe(dueThisMonth)} accent="#F1C40F" />
+      </div>
+      <div className="p-3 rounded-sm mb-4" style={{ background: "#FFF6E0", border: `1px solid #E2C879` }}><p className="text-xs" style={{ color: INK }}>Reminder: confirm you are permitted to take public investments and have shared written terms with each investor. Returns shown are estimates based on the rate you set.</p></div>
+      <div className="flex justify-end mb-4">{!adding && <GoldButton small onClick={() => setAdding(true)}>+ Record Investment</GoldButton>}</div>
+
+      {adding && (
+        <div className="p-4 rounded-sm mb-5 grid sm:grid-cols-2 gap-2" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}>
+          <input value={f.investor} onChange={set("investor")} placeholder="Investor name *" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
+          <input value={f.phone} onChange={set("phone")} placeholder="Phone / WhatsApp" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
+          <input type="number" value={f.principal} onChange={set("principal")} placeholder="Amount invested (Le) *" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
+          <input type="number" step="0.1" value={f.rate} onChange={set("rate")} placeholder="Monthly return rate %" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
+          <label className="text-xs" style={{ color: MUTED }}>Start date<input type="date" value={f.startDate} onChange={set("startDate")} className="w-full px-3 py-2.5 rounded-sm text-sm mt-1" style={inputStyle} /></label>
+          {accounts.length > 0 && <label className="text-xs" style={{ color: MUTED }}>Link customer account<select value={f.accountId} onChange={set("accountId")} className="w-full px-3 py-2.5 rounded-sm text-sm mt-1" style={inputStyle}><option value="">— none —</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.email}</option>)}</select></label>}
+          <textarea value={f.note} onChange={set("note")} rows={2} placeholder="Note / terms reference" className="px-3 py-2.5 rounded-sm text-sm sm:col-span-2" style={inputStyle} />
+          <div className="flex gap-2 sm:col-span-2"><GoldButton small onClick={save}>Save</GoldButton><GoldButton small outline onClick={() => setAdding(false)}>Cancel</GoldButton></div>
+        </div>
+      )}
+
+      <div className="grid gap-3">
+        {!investments.length && <p className="text-sm py-8 text-center" style={{ color: MUTED }}>No investments recorded yet.</p>}
+        {investments.map((i) => { const months = monthsSince(i.startDate); const monthly = Number(i.principal) * Number(i.rate || 0) / 100; const paid = (i.payouts || []).reduce((s, p) => s + Number(p.amount || 0), 0); const accrued = monthly * months; return (
+          <div key={i.id} className="p-4 rounded-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}`, borderLeft: `4px solid ${(i.status || "active") === "active" ? "#2E7D32" : MUTED}` }}>
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div className="min-w-[200px]">
+                <p className="font-medium text-sm">{i.investor} <span style={{ color: MUTED }}>· {i.phone}</span></p>
+                <p className="text-sm mt-0.5">{fmtLe(i.principal)} @ {i.rate}%/mo · since {i.startDate} ({months} mo)</p>
+                <p className="text-xs mt-1" style={{ color: MUTED }}>Est. monthly {fmtLe(monthly)} · accrued {fmtLe(accrued)} · paid {fmtLe(paid)} · outstanding {fmtLe(Math.max(0, accrued - paid))}</p>
+                {i.note && <p className="text-xs mt-1 italic" style={{ color: MUTED }}>{i.note}</p>}
+              </div>
+              <div className="flex flex-col items-end gap-2">
+                <select value={i.status || "active"} onChange={(e) => setStatus(i.id, e.target.value)} className="px-2 py-1.5 rounded-sm text-xs" style={inputStyle}><option value="active">Active</option><option value="closed">Closed</option><option value="paused">Paused</option></select>
+                <div className="flex gap-1.5 items-center">
+                  <input type="number" value={payout[i.id] || ""} onChange={(e) => setPayout({ ...payout, [i.id]: e.target.value })} placeholder="Payout Le" className="px-2 py-1.5 rounded-sm text-xs w-24" style={inputStyle} />
+                  <button onClick={() => addPayout(i.id)} className="px-2 py-1.5 text-[11px] rounded-sm" style={{ background: GOLD, color: BLACK }}>Pay return</button>
+                </div>
+                <div className="flex gap-2">
+                  {i.phone && <a href={waLink(`Hello ${i.investor}, this is PC Wears. Your investment return of ${fmtLe(monthly)} for this month is ready. Thank you for investing with us!`)} target="_blank" rel="noopener noreferrer" className="text-[11px] underline" style={{ color: "#25997a" }}>Notify</a>}
+                  <button onClick={() => remove(i.id)} className="text-[11px] underline" style={{ color: "#C0392B" }}>Delete</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ); })}
+      </div>
+    </div>
+  );
+}
+
+/* ================= ADMIN: EXPENSES ================= */
+function AdminExpenses({ expenses, saveExpenses, showToast }) {
+  const [f, setF] = useState({ date: todayISO(), category: EXPENSE_CATS[0], description: "", amount: "", paidBy: "" });
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const inputStyle = { background: WHITE, border: `1px solid ${CREAM_DARK}` };
+  const add = () => { if (!f.amount || !f.description.trim()) { showToast("Description and amount required"); return; } saveExpenses([{ ...f, id: uid(), amount: Number(f.amount) }, ...expenses]); setF({ date: todayISO(), category: EXPENSE_CATS[0], description: "", amount: "", paidBy: "" }); showToast("Expense recorded"); };
+  const remove = (id) => saveExpenses(expenses.filter((x) => x.id !== id));
+  const total = expenses.reduce((s, x) => s + Number(x.amount || 0), 0);
+  const thisMonth = expenses.filter((x) => (x.date || "").slice(0, 7) === todayISO().slice(0, 7)).reduce((s, x) => s + Number(x.amount || 0), 0);
+  const exportCsv = () => downloadCSV("pcwears-expenses.csv", [["Date","Category","Description","Amount","Paid by"], ...expenses.map((x) => [x.date, x.category, x.description, x.amount, x.paidBy])]);
+  return (
+    <div className="max-w-3xl">
+      <div className="grid grid-cols-2 gap-3 mb-5"><StatCard label="Total expenses" value={fmtLe(total)} accent="#F1948A" /><StatCard label="This month" value={fmtLe(thisMonth)} accent="#F1948A" /></div>
+      <div className="p-4 rounded-sm mb-4 grid sm:grid-cols-6 gap-2 items-end" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}>
+        <input type="date" value={f.date} onChange={set("date")} className="px-2 py-2.5 rounded-sm text-sm" style={inputStyle} />
+        <select value={f.category} onChange={set("category")} className="px-2 py-2.5 rounded-sm text-sm sm:col-span-2" style={inputStyle}>{EXPENSE_CATS.map((c) => <option key={c}>{c}</option>)}</select>
+        <input value={f.description} onChange={set("description")} placeholder="Description" className="px-2 py-2.5 rounded-sm text-sm sm:col-span-2" style={inputStyle} />
+        <input type="number" value={f.amount} onChange={set("amount")} placeholder="Amount" className="px-2 py-2.5 rounded-sm text-sm" style={inputStyle} />
+        <input value={f.paidBy} onChange={set("paidBy")} placeholder="Paid by (staff)" className="px-2 py-2.5 rounded-sm text-sm sm:col-span-5" style={inputStyle} />
+        <GoldButton small onClick={add}>Add</GoldButton>
+      </div>
+      <div className="flex justify-between items-center mb-2"><p className="text-sm" style={{ color: GOLD }}>{expenses.length} records</p>{expenses.length > 0 && <button onClick={exportCsv} className="text-xs uppercase tracking-widest" style={{ color: GOLD }}>Export CSV</button>}</div>
+      <div className="grid gap-2">
+        {!expenses.length && <p className="text-sm" style={{ color: MUTED }}>No expenses recorded yet.</p>}
+        {expenses.map((x) => (
+          <div key={x.id} className="flex items-center justify-between p-3 rounded-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}>
+            <div><p className="text-sm font-medium">{x.description} <span style={{ color: MUTED }}>· {x.category}</span></p><p className="text-xs" style={{ color: MUTED }}>{x.date}{x.paidBy ? ` · ${x.paidBy}` : ""}</p></div>
+            <div className="flex items-center gap-3"><span className="font-semibold text-sm" style={{ color: "#C0392B" }}>{fmtLe(x.amount)}</span><button onClick={() => remove(x.id)} style={{ color: "#C0392B" }} aria-label="Delete">✕</button></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ================= ADMIN: REPORTS ================= */
+function AdminReports({ orders, expenses, customers, investments, movements }) {
+  const [period, setPeriod] = useState("month");
+  const now = new Date();
+  const inRange = (dateStr) => {
+    if (!dateStr) return false;
+    const d = new Date(dateStr);
+    if (period === "today") return dateStr === todayISO();
+    if (period === "week") { const diff = (now - d) / 86400000; return diff >= 0 && diff < 7; }
+    if (period === "month") return dateStr.slice(0, 7) === todayISO().slice(0, 7);
+    if (period === "year") return dateStr.slice(0, 4) === todayISO().slice(0, 4);
+    return true;
+  };
+  const paymentsInRange = orders.flatMap((o) => (o.payments || []).filter((p) => inRange(p.date)).map((p) => Number(p.amount || 0)));
+  const revenue = paymentsInRange.reduce((s, n) => s + n, 0);
+  const ordersInRange = orders.filter((o) => inRange(o.createdAt));
+  const salesBooked = ordersInRange.reduce((s, o) => s + orderTotal(o), 0);
+  const expInRange = expenses.filter((x) => inRange(x.date)).reduce((s, x) => s + Number(x.amount || 0), 0);
+  const investIn = investments.filter((i) => inRange(i.startDate)).reduce((s, i) => s + Number(i.principal || 0), 0);
+  const payoutsInRange = investments.flatMap((i) => (i.payouts || []).filter((p) => inRange(p.date)).map((p) => Number(p.amount || 0))).reduce((s, n) => s + n, 0);
+  const newCustomers = customers.filter((c) => inRange(c.createdAt)).length;
+  const net = revenue - expInRange - payoutsInRange;
+  const label = { today: "Today", week: "This Week", month: "This Month", year: "This Year" }[period];
+
+  const catBreak = {};
+  ordersInRange.forEach((o) => { const k = catName(o.category) || "Other"; catBreak[k] = (catBreak[k] || 0) + orderTotal(o); });
+
+  const exportCsv = () => downloadCSV(`pcwears-report-${period}.csv`, [
+    ["PC Wears report", label], [],
+    ["Revenue (payments received)", revenue], ["Sales booked (order totals)", salesBooked],
+    ["Expenses", expInRange], ["Investment returns paid", payoutsInRange], ["Net (revenue − expenses − payouts)", net],
+    ["New customers", newCustomers], ["Orders created", ordersInRange.length], ["New investment capital", investIn],
+  ]);
+
+  return (
+    <div>
+      <div className="flex flex-wrap gap-2 mb-5">
+        {[["today", "Daily"], ["week", "Weekly"], ["month", "Monthly"], ["year", "Yearly"]].map(([k, l]) => (
+          <button key={k} onClick={() => setPeriod(k)} className="px-4 py-2 rounded-sm text-sm uppercase tracking-wider" style={{ background: period === k ? BLACK : WHITE, color: period === k ? GOLD : INK, border: `1px solid ${period === k ? BLACK : CREAM_DARK}` }}>{l}</button>
+        ))}
+        <button onClick={exportCsv} className="ml-auto px-4 py-2 rounded-sm text-sm uppercase tracking-wider" style={{ border: `1px solid ${GOLD}`, color: GOLD }}>Export CSV</button>
+      </div>
+      <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: GOLD }}>{label}</p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+        <StatCard label="Revenue (paid)" value={fmtLe(revenue)} accent="#7DCEA0" />
+        <StatCard label="Sales booked" value={fmtLe(salesBooked)} />
+        <StatCard label="Expenses" value={fmtLe(expInRange)} accent="#F1948A" />
+        <StatCard label="Returns paid" value={fmtLe(payoutsInRange)} accent="#F1C40F" />
+        <StatCard label="Net" value={fmtLe(net)} accent={net >= 0 ? "#7DCEA0" : "#F1948A"} />
+        <StatCard label="New customers" value={newCustomers} />
+        <StatCard label="Orders created" value={ordersInRange.length} />
+        <StatCard label="New capital" value={fmtLe(investIn)} />
+      </div>
+      <div className="p-5 rounded-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}>
+        <p className="text-xs uppercase tracking-widest mb-3" style={{ color: GOLD }}>Sales by category ({label})</p>
+        {Object.keys(catBreak).length === 0 ? <p className="text-sm" style={{ color: MUTED }}>No orders in this period.</p> :
+          Object.entries(catBreak).sort((a, b) => b[1] - a[1]).map(([k, v]) => (
+            <div key={k} className="flex justify-between text-sm py-1.5 border-b" style={{ borderColor: CREAM_DARK }}><span>{k}</span><span className="font-medium">{fmtLe(v)}</span></div>
+          ))}
+      </div>
+      <p className="text-xs mt-4" style={{ color: MUTED }}>Revenue counts actual payments received in the period; sales booked counts the full value of orders created in the period. Net = revenue − expenses − investment returns paid.</p>
     </div>
   );
 }
