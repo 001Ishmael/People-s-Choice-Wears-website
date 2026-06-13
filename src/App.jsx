@@ -42,6 +42,7 @@ const CATEGORIES = [
   { id: "sandals", name: "Sandals & Slippers", icon: "🩴" },
   { id: "glasses", name: "Smart Glasses", icon: "🕶️" },
   { id: "accessories", name: "Accessories", icon: "💎" },
+  { id: "cosmetics", name: "Cosmetics", icon: "💄" },
 ];
 const catName = (id) => (CATEGORIES.find((c) => c.id === id) || {}).name || id;
 const catIcon = (id) => (CATEGORIES.find((c) => c.id === id) || {}).icon || "🛍️";
@@ -63,6 +64,12 @@ const SEED_PRODUCTS = [
   { id: "p14", name: "Smart Audio Glasses", category: "glasses", price: 550, description: "Bluetooth audio sunglasses — take calls and play music, hands free, UV protected.", sizes: [], colors: ["Black"], stock: "available", featured: true, newArrival: true, bestSeller: false, image: null },
   { id: "p15", name: "Gold Cuban Link Chain", category: "accessories", price: 320, description: "Statement Cuban link chain with premium gold plating. Anti-tarnish.", sizes: ["20\"", "24\""], colors: ["Gold", "Silver"], stock: "available", featured: false, newArrival: false, bestSeller: true, image: null },
   { id: "p16", name: "Leather Card Wallet", category: "accessories", price: 150, description: "Slim genuine leather wallet. Six card slots plus cash pocket.", sizes: [], colors: ["Black", "Brown"], stock: "sold_out", featured: false, newArrival: false, bestSeller: false, image: null },
+  { id: "c1", name: "Matte Liquid Lipstick Set", category: "cosmetics", price: 220, description: "Long-wear matte liquid lipsticks in six rich, everyday shades.", sizes: [], colors: ["Nude", "Rose", "Wine", "Brick", "Berry", "Red"], stock: "available", featured: true, newArrival: true, bestSeller: true, image: null },
+  { id: "c2", name: "Radiance Foundation", category: "cosmetics", price: 280, description: "Buildable medium-to-full coverage foundation with a natural glow finish. Wide shade range.", sizes: ["30ml"], colors: ["Honey", "Caramel", "Chestnut", "Espresso"], stock: "available", featured: true, newArrival: false, bestSeller: true, image: null },
+  { id: "c3", name: "Pro Eyeshadow Palette", category: "cosmetics", price: 320, description: "16 highly pigmented mattes and shimmers for day-to-glam looks.", sizes: [], colors: ["Warm Neutrals", "Bold Glam"], stock: "available", featured: false, newArrival: true, bestSeller: false, image: null },
+  { id: "c4", name: "Glow Setting Spray", category: "cosmetics", price: 160, description: "Locks makeup in place all day with a dewy, fresh finish.", sizes: ["100ml"], colors: [], stock: "available", featured: false, newArrival: false, bestSeller: true, image: null },
+  { id: "c5", name: "Lash & Brow Kit", category: "cosmetics", price: 140, description: "Volumising mascara, brow pencil and gel for defined, polished brows.", sizes: [], colors: ["Black", "Brown"], stock: "available", featured: false, newArrival: true, bestSeller: false, image: null },
+  { id: "c6", name: "Skincare Glow Trio", category: "cosmetics", price: 360, description: "Gentle cleanser, vitamin-C serum and moisturiser for radiant, even skin.", sizes: [], colors: [], stock: "coming_soon", featured: true, newArrival: true, bestSeller: false, image: null },
 ];
 
 const TESTIMONIALS = [
@@ -70,12 +77,20 @@ const TESTIMONIALS = [
   { name: "Mohamed S.", city: "Lumley", text: "Ordered a senator suit and a watch. Smooth process on WhatsApp, fast delivery. PC Wears is my plug." },
   { name: "Isatu B.", city: "Wilberforce", text: "The wig is gorgeous and looks so natural. Customer service was patient and helpful the whole way." },
 ];
+const SEED_POSTS = [
+  { id: "b1", title: "5 Ways to Style an Africana Set for Any Occasion", date: "2026-05-20", cover: "🧵", excerpt: "One great Africana set can take you from church to a wedding to the office. Here's how to restyle it five ways.",
+    body: "A well-tailored Africana set is the most versatile piece in your wardrobe. Start with a clean, structured cut in a neutral base like black, cream or navy so it pairs with everything.\n\nFor formal events, add gold accessories and polished Oxford shoes. For a relaxed daytime look, roll the sleeves, swap in leather palm slippers, and keep jewellery minimal. Heading to the office? Layer a crisp shirt underneath and keep the palette tonal.\n\nThe secret is contrast and confidence: let one bold element lead — the fabric print, a gold chain, or a statement watch — and keep the rest quiet. Crafted with choice, worn with pride." },
+  { id: "b2", title: "Choosing Colors That Flatter Your Skin Tone", date: "2026-05-05", cover: "🎨", excerpt: "Gold, emerald, deep navy or wine? A simple guide to the shades that make rich skin tones glow.",
+    body: "Color is the fastest way to elevate an outfit. For deep and warm skin tones, jewel shades like emerald, royal blue, wine and mustard create a striking, luxurious contrast.\n\nGold and cream are universally flattering and sit at the heart of the PC Wears palette — they read as premium and pair beautifully with black. If you love bright colors, balance them with a neutral so the look stays elegant rather than busy.\n\nWhen in doubt, build around one hero color and add metallic accents. Not sure what suits you? Ask our AI Style Advisor for a personal recommendation." },
+  { id: "b3", title: "Caring for Your Human Hair Wig", date: "2026-04-18", cover: "💁🏾‍♀️", excerpt: "Keep your wig looking salon-fresh for longer with these simple care habits.",
+    body: "A quality human-hair wig is an investment, and a little care keeps it gorgeous for months. Wash gently with sulphate-free shampoo every 7–10 wears, condition from mid-length to ends, and let it air-dry on a stand.\n\nStore it on a mannequin or in a silk bag to keep the style intact, and use heat tools sparingly with a heat protectant. Brush from the ends upward to avoid shedding.\n\nWith the right routine, your bone-straight or body-wave wig stays soft, shiny and natural-looking far longer." },
+];
+
 
 /* ============================================================
-   DATA LAYER
-   All persistence goes through src/lib/store.js. Today it uses
-   localStorage; to sync across every device, fill in the Supabase
-   adapter in that one file. Nothing in this component changes.
+   DATA LAYER  — all persistence goes through src/lib/store.js
+   (localStorage by default; fill in the Supabase adapter there to
+   sync across every device). Nothing in this file needs to change.
    ============================================================ */
 
 /* ---------------- helpers ---------------- */
@@ -197,6 +212,7 @@ function SectionTitle({ eyebrow, title, dark, action }) {
 /* ================= APP ================= */
 export default function App() {
   const [route, setRoute] = useState({ page: "home", productId: null });
+  const [posts, setPosts] = useState([]);
   const [products, setProducts] = useState(null);
   const [orders, setOrders] = useState([]);
   const [cart, setCart] = useState([]);
@@ -215,6 +231,9 @@ export default function App() {
       if (p && Array.isArray(p) && p.length) setProducts(p);
       else { setProducts(SEED_PRODUCTS); sSet("pcw2:products", SEED_PRODUCTS, true); }
       setOrders(await sGet("pcw2:orders", [], true));
+      const bp = await sGet("pcw2:posts", null, true);
+      if (bp && Array.isArray(bp) && bp.length) setPosts(bp);
+      else { setPosts(SEED_POSTS); sSet("pcw2:posts", SEED_POSTS, true); }
       setCart(await sGet("pcw2:cart", [], false));
       setWishlist(await sGet("pcw2:wishlist", [], false));
       const pass = await sGet("pcw2:adminpass", null, true);
@@ -227,6 +246,7 @@ export default function App() {
   const saveOrders = (n) => { setOrders(n); sSet("pcw2:orders", n, true); };
   const saveCart = (n) => { setCart(n); sSet("pcw2:cart", n, false); };
   const saveWishlist = (n) => { setWishlist(n); sSet("pcw2:wishlist", n, false); };
+  const savePosts = (n) => { setPosts(n); sSet("pcw2:posts", n, true); };
 
   const go = (page, productId = null) => { setRoute({ page, productId }); setMenuOpen(false); setQuickView(null); window.scrollTo({ top: 0 }); };
   const showToast = (m) => { setToast(m); setTimeout(() => setToast(null), 2200); };
@@ -251,7 +271,7 @@ export default function App() {
     custom: "Hello PC Wears, I'd like to ask about a custom outfit.",
   }[route.page] || "Hello PC Wears, I'd like to make an inquiry.";
 
-  const pp = { products, saveProducts, orders, saveOrders, cart, saveCart, wishlist, toggleWish, go, addToCart, cartTotal, showToast, adminPass, setAdminPass, isAdmin, setIsAdmin, setQuickView };
+  const pp = { products, saveProducts, orders, saveOrders, posts, savePosts, cart, saveCart, wishlist, toggleWish, go, addToCart, cartTotal, showToast, adminPass, setAdminPass, isAdmin, setIsAdmin, setQuickView };
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: CREAM, color: INK, fontFamily: "'Jost', sans-serif" }}>
@@ -279,7 +299,7 @@ export default function App() {
             </span>
           </button>
           <nav className="hidden md:flex items-center gap-6 text-sm uppercase tracking-wider">
-            {[["home", "Home"], ["shop", "Shop"], ["custom", "Custom Order"], ["about", "About"], ["contact", "Contact"]].map(([k, l]) => (
+            {[["home", "Home"], ["shop", "Shop"], ["cosmetics", "Cosmetics"], ["stylist", "Style AI"], ["blog", "Blog"], ["custom", "Custom Order"], ["about", "About"], ["contact", "Contact"]].map(([k, l]) => (
               <button key={k} onClick={() => go(k)} style={{ color: route.page === k ? GOLD : CREAM }} className="hover:opacity-80">{l}</button>
             ))}
           </nav>
@@ -298,7 +318,7 @@ export default function App() {
         </div>
         {menuOpen && (
           <nav className="md:hidden flex flex-col px-4 pb-4 gap-1 text-sm uppercase tracking-wider" style={{ background: BLACK }}>
-            {[["home", "Home"], ["shop", "Shop"], ["wishlist", "Wishlist"], ["custom", "Custom Order"], ["about", "About"], ["contact", "Contact"], ["admin", "Admin"]].map(([k, l]) => (
+            {[["home", "Home"], ["shop", "Shop"], ["cosmetics", "Cosmetics"], ["stylist", "Style AI"], ["blog", "Blog"], ["wishlist", "Wishlist"], ["custom", "Custom Order"], ["about", "About"], ["contact", "Contact"], ["admin", "Admin"]].map(([k, l]) => (
               <button key={k} onClick={() => go(k)} className="text-left py-2.5 border-b" style={{ color: route.page === k ? GOLD : CREAM, borderColor: `${GOLD}22` }}>{l}</button>
             ))}
             <div className="pt-3"><SocialRow color={CREAM} /></div>
@@ -311,6 +331,10 @@ export default function App() {
       <main className="flex-1">
         {route.page === "home" && <HomePage {...pp} />}
         {route.page === "shop" && <ShopPage {...pp} />}
+        {route.page === "cosmetics" && <CosmeticsPage {...pp} />}
+        {route.page === "stylist" && <StylistPage {...pp} />}
+        {route.page === "blog" && <BlogPage {...pp} />}
+        {route.page === "post" && <BlogPostPage {...pp} postId={route.productId} />}
         {route.page === "wishlist" && <WishlistPage {...pp} />}
         {route.page === "product" && <ProductPage {...pp} productId={route.productId} />}
         {route.page === "cart" && <CartPage {...pp} setDrawerOpen={setDrawerOpen} />}
@@ -339,6 +363,11 @@ export default function App() {
             <h4 className="uppercase tracking-widest mb-3" style={{ color: GOLD }}>Shop</h4>
             <div className="grid grid-cols-2 gap-1">
               {CATEGORIES.slice(0, 8).map((c) => <button key={c.id} onClick={() => go("shop")} className="text-left hover:opacity-80" style={{ color: CREAM }}>{c.name}</button>)}
+            </div>
+            <div className="mt-3 flex flex-col gap-1">
+              <button onClick={() => go("cosmetics")} className="text-left hover:opacity-80" style={{ color: GOLD }}>PC Cosmetics</button>
+              <button onClick={() => go("stylist")} className="text-left hover:opacity-80" style={{ color: GOLD }}>AI Style Advisor</button>
+              <button onClick={() => go("blog")} className="text-left hover:opacity-80" style={{ color: GOLD }}>Blog</button>
             </div>
           </div>
           <div className="text-sm">
@@ -873,9 +902,10 @@ function AdminDashboard(props) {
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6"><h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 700, fontSize: 30 }}>PC Wears Dashboard</h1><GoldButton small outline onClick={() => props.setIsAdmin(false)}>Log Out</GoldButton></div>
-      <div className="flex gap-2 mb-6 flex-wrap">{[["products", "Products"], ["orders", "Orders"], ["settings", "Settings"]].map(([k, l]) => <button key={k} onClick={() => setTab(k)} className="px-4 py-2 rounded-sm text-sm uppercase tracking-wider" style={{ background: tab === k ? BLACK : WHITE, color: tab === k ? GOLD : INK, border: `1px solid ${tab === k ? BLACK : CREAM_DARK}` }}>{l}</button>)}</div>
+      <div className="flex gap-2 mb-6 flex-wrap">{[["products", "Products"], ["orders", "Orders"], ["blog", "Blog"], ["settings", "Settings"]].map(([k, l]) => <button key={k} onClick={() => setTab(k)} className="px-4 py-2 rounded-sm text-sm uppercase tracking-wider" style={{ background: tab === k ? BLACK : WHITE, color: tab === k ? GOLD : INK, border: `1px solid ${tab === k ? BLACK : CREAM_DARK}` }}>{l}</button>)}</div>
       {tab === "products" && <AdminProducts {...props} />}
       {tab === "orders" && <AdminOrders {...props} />}
+      {tab === "blog" && <AdminBlog {...props} />}
       {tab === "settings" && <AdminSettings {...props} />}
     </div>
   );
@@ -1003,6 +1033,246 @@ function AdminSettings({ adminPass, setAdminPass, showToast, products, saveProdu
       <div className="p-5 rounded-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}><h3 className="text-sm uppercase tracking-widest mb-3" style={{ color: GOLD }}>Change admin password</h3><input type="password" value={newPass} onChange={(e) => setNewPass(e.target.value)} placeholder="New password (min 6 characters)" className="w-full px-3 py-2.5 rounded-sm text-sm mb-3" style={inputStyle} /><GoldButton small onClick={changePass}>Update Password</GoldButton></div>
       <div className="p-5 rounded-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}><h3 className="text-sm uppercase tracking-widest mb-3" style={{ color: GOLD }}>Sample catalogue</h3><p className="text-xs mb-3" style={{ color: MUTED }}>The shop launched with sample products so it never looks empty. Delete them from the Products tab as you add real items, or restore them here.</p><GoldButton small outline onClick={restore}>Restore Sample Products</GoldButton></div>
       <div className="p-5 rounded-sm" style={{ background: NAVY, color: CREAM }}><h3 className="text-sm uppercase tracking-widest mb-2" style={{ color: GOLD }}>Store details</h3><p className="text-sm">WhatsApp: {WA_DISPLAY}</p><p className="text-sm">{ADDRESS}</p><p className="text-xs mt-2" style={{ color: MUTED }}>To sync products across all devices, connect a database — see the project README "Connect a database".</p></div>
+    </div>
+  );
+}
+
+/* ================= PC COSMETICS ================= */
+function CosmeticsPage({ products, go, addToCart, setQuickView, wishlist, toggleWish }) {
+  const items = products.filter((p) => p.category === "cosmetics");
+  const [sort, setSort] = useState("featured");
+  const sorted = useMemo(() => {
+    let r = [...items];
+    if (sort === "low") r.sort((a, b) => a.price - b.price);
+    else if (sort === "high") r.sort((a, b) => b.price - a.price);
+    else r.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
+    return r;
+  }, [items, sort]);
+  return (
+    <div>
+      <section className="relative overflow-hidden" style={{ background: `radial-gradient(ellipse at 25% 20%, ${NAVY} 0%, transparent 55%), ${BLACK}` }}>
+        <div className="max-w-6xl mx-auto px-4 py-16 text-center pcw-rise">
+          <span className="text-4xl">💄</span>
+          <p className="mt-3 text-xs uppercase tracking-[0.35em]" style={{ color: GOLD }}>PC Cosmetics</p>
+          <h1 className="mt-3 mx-auto max-w-2xl" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 600, fontSize: "clamp(2rem,5.5vw,3.2rem)", lineHeight: 1.08, color: CREAM }}>
+            Beauty that <em style={{ color: GOLD }}>matches your glow</em>
+          </h1>
+          <p className="mt-3 mx-auto max-w-lg text-sm" style={{ color: "#C2BAA9" }}>Lipsticks, foundation, palettes, skincare and more — curated for rich, radiant skin.</p>
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <GoldButton outline light href={waLink("Hello PC Wears, I'd like to ask about your cosmetics.")}><WaIcon size={16} color={CREAM} /> Ask on WhatsApp</GoldButton>
+          </div>
+        </div>
+        <KenteStrip />
+      </section>
+      <div className="max-w-6xl mx-auto px-4 py-10">
+        <div className="flex items-center justify-between mb-6">
+          <SectionTitle eyebrow="Shop beauty" title="PC Cosmetics" />
+          <select value={sort} onChange={(e) => setSort(e.target.value)} className="px-3 py-2 rounded-sm text-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }} aria-label="Sort">
+            <option value="featured">Featured</option><option value="low">Price: Low to High</option><option value="high">Price: High to Low</option>
+          </select>
+        </div>
+        {sorted.length ? <ProductGrid items={sorted} go={go} addToCart={addToCart} setQuickView={setQuickView} wishlist={wishlist} toggleWish={toggleWish} />
+          : <p className="text-sm" style={{ color: MUTED }}>Cosmetics are coming soon. Add them from the admin dashboard under the "Cosmetics" category.</p>}
+      </div>
+    </div>
+  );
+}
+
+/* ================= AI STYLE ADVISOR ================= */
+/* Tries the Anthropic API (works in this preview). On a deployed site
+   without an API key it falls back to a built-in stylist so advice
+   always works. See README "Make the Style Advisor fully live". */
+function localStyleAdvice(q) {
+  const t = q.toLowerCase();
+  const tips = [];
+  if (/wedding|party|event|gala|formal|owambe/.test(t))
+    tips.push("For weddings and formal events, a tailored Africana set or gown in a jewel tone (emerald, royal blue, wine) with gold accessories reads luxurious. Keep one element bold and the rest tonal.");
+  if (/office|work|business|interview/.test(t))
+    tips.push("For office or business looks, choose structured cuts in navy, charcoal, cream or black. A crisp shirt under a senator suit with leather Oxfords looks sharp and professional.");
+  if (/casual|daytime|everyday|church/.test(t))
+    tips.push("For everyday wear, lighter Ankara prints with palm slippers or clean sneakers stay comfortable yet stylish. Roll the sleeves and keep jewellery minimal.");
+  if (/dark|deep|chocolate|brown skin|melanin/.test(t))
+    tips.push("Deep, warm skin tones glow in emerald, mustard, royal blue, wine and crisp white. Gold metallics flatter beautifully — silver works too for a cooler contrast.");
+  if (/light|fair/.test(t))
+    tips.push("Lighter skin tones suit deep jewel tones and earthy shades; soft pastels and navy also work well. Avoid colors too close to your skin tone so the outfit still pops.");
+  if (/color|colour|match|pair|combination/.test(t))
+    tips.push("A reliable formula: pick one hero color, one neutral (black, cream, navy or white), and one metallic accent (gold). Three is balanced; more than four starts to feel busy.");
+  if (/men|man|male|senator|suit/.test(t))
+    tips.push("Men: a navy or black senator suit is the most versatile base. Add a kente accent or gold watch for occasions, keep it plain for the office.");
+  if (/woman|women|ladies|gown|dress/.test(t))
+    tips.push("Ladies: a fitted gown in a jewel tone with gold detailing makes a statement; an Ankara two-piece is the flexible everyday choice.");
+  if (!tips.length)
+    tips.push("Tell me the occasion (wedding, office, casual), your favourite colors, and whether you prefer Africana or modern cuts, and I'll suggest a complete look. As a starting point, a black or navy base with gold accents is elegant for almost anything.");
+  tips.push("Browse these styles in our Shop, or message PC Wears on WhatsApp at " + WA_DISPLAY + " for a personal recommendation.");
+  return tips.join("\n\n");
+}
+
+function StylistPage() {
+  const [messages, setMessages] = useState([
+    { role: "assistant", content: "Hi! I'm the PC Wears Style Advisor 💛 Tell me the occasion, your favourite colors, or your skin tone, and I'll suggest outfits, designs and color combinations. How can I help you look your best?" },
+  ]);
+  const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const send = async () => {
+    const q = input.trim();
+    if (!q || busy) return;
+    const next = [...messages, { role: "user", content: q }];
+    setMessages(next); setInput(""); setBusy(true);
+    const system = "You are the PC Wears Style Advisor, a warm, expert fashion stylist for PC Wears — a luxury fashion and lifestyle brand in Freetown, Sierra Leone. You give friendly, practical advice on outfit designs, fabrics, and color combinations, with a focus on Africana wears, ready-made outfits, and modern styling for African skin tones. Keep replies concise (under 160 words), encouraging, and specific. When relevant, suggest categories PC Wears sells (Africana wears, men's/ladies' wear, hair & wigs, perfumes, watches, shoes, cosmetics, accessories) and remind them they can order on WhatsApp at " + WA_DISPLAY + ". Never invent prices.";
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 1000,
+          system,
+          messages: next.map((m) => ({ role: m.role, content: m.content })),
+        }),
+      });
+      if (!res.ok) throw new Error("api");
+      const data = await res.json();
+      const text = (data.content || []).map((i) => (i.type === "text" ? i.text : "")).filter(Boolean).join("\n").trim();
+      setMessages([...next, { role: "assistant", content: text || localStyleAdvice(q) }]);
+    } catch {
+      setMessages([...next, { role: "assistant", content: localStyleAdvice(q) }]);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const prompts = ["What should I wear to a wedding?", "Colors for dark skin tone?", "Office outfit ideas for men", "How do I match gold accessories?"];
+  return (
+    <div className="max-w-3xl mx-auto px-4 py-10">
+      <SectionTitle eyebrow="Ask our AI" title="Style Advisor" />
+      <p className="text-sm mb-5 -mt-2" style={{ color: MUTED }}>Get instant advice on outfit designs and color combinations for any occasion.</p>
+      <div className="rounded-sm overflow-hidden flex flex-col" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}`, height: "60vh", minHeight: 420 }}>
+        <div className="flex items-center gap-2 px-4 py-3" style={{ background: BLACK, color: CREAM }}>
+          <Crest size={26} /><span className="text-sm uppercase tracking-widest" style={{ color: GOLD }}>PC Wears Style Advisor</span>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          {messages.map((m, i) => (
+            <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div className="max-w-[85%] px-3.5 py-2.5 rounded-lg text-sm whitespace-pre-wrap" style={m.role === "user" ? { background: GOLD, color: BLACK } : { background: CREAM, color: INK, border: `1px solid ${CREAM_DARK}` }}>{m.content}</div>
+            </div>
+          ))}
+          {busy && <div className="flex justify-start"><div className="px-3.5 py-2.5 rounded-lg text-sm" style={{ background: CREAM, color: MUTED, border: `1px solid ${CREAM_DARK}` }}>Styling your look…</div></div>}
+        </div>
+        {messages.length <= 1 && (
+          <div className="px-4 pb-2 flex flex-wrap gap-2">
+            {prompts.map((p) => <button key={p} onClick={() => setInput(p)} className="text-xs px-3 py-1.5 rounded-full" style={{ border: `1px solid ${GOLD}`, color: GOLD }}>{p}</button>)}
+          </div>
+        )}
+        <div className="p-3 flex gap-2 border-t" style={{ borderColor: CREAM_DARK }}>
+          <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="Ask about outfits, designs or colors…" className="flex-1 px-3 py-2.5 rounded-sm text-sm" style={{ background: CREAM, border: `1px solid ${CREAM_DARK}` }} />
+          <GoldButton small onClick={send} disabled={busy}>Send</GoldButton>
+        </div>
+      </div>
+      <p className="text-xs mt-3" style={{ color: MUTED }}>Tip: tell it the occasion, your colors and your skin tone for the best suggestions. For orders, message {WA_DISPLAY} on WhatsApp.</p>
+    </div>
+  );
+}
+
+/* ================= BLOG ================= */
+function BlogPage({ posts, go }) {
+  const sorted = [...posts].sort((a, b) => (a.date < b.date ? 1 : -1));
+  return (
+    <div className="max-w-5xl mx-auto px-4 py-10">
+      <SectionTitle eyebrow="Style journal" title="PC Wears Blog" />
+      {!sorted.length ? <p className="text-sm" style={{ color: MUTED }}>No posts yet. Add articles from the admin dashboard under the Blog tab.</p> :
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {sorted.map((p) => (
+            <button key={p.id} onClick={() => go("post", p.id)} className="text-left flex flex-col rounded-sm overflow-hidden transition-transform hover:-translate-y-0.5" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}>
+              <div className="aspect-[16/10] flex items-center justify-center text-5xl" style={{ background: `radial-gradient(circle at 30% 25%, ${NAVY_SOFT}, ${BLACK})` }}>{p.cover || "📝"}</div>
+              <div className="p-4 flex-1 flex flex-col">
+                <p className="text-[10px] uppercase tracking-widest" style={{ color: GOLD }}>{p.date}</p>
+                <h3 className="mt-1 mb-1" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 700, fontSize: 19, lineHeight: 1.2 }}>{p.title}</h3>
+                <p className="text-xs flex-1" style={{ color: MUTED }}>{p.excerpt}</p>
+                <span className="mt-3 text-xs uppercase tracking-widest" style={{ color: GOLD }}>Read more →</span>
+              </div>
+            </button>
+          ))}
+        </div>}
+    </div>
+  );
+}
+function BlogPostPage({ posts, postId, go }) {
+  const p = posts.find((x) => x.id === postId);
+  if (!p) return <div className="max-w-3xl mx-auto px-4 py-16 text-center"><p>Post not found.</p><div className="mt-4"><GoldButton onClick={() => go("blog")}>Back to Blog</GoldButton></div></div>;
+  const others = posts.filter((x) => x.id !== p.id).slice(0, 3);
+  return (
+    <article className="max-w-2xl mx-auto px-4 py-10">
+      <button onClick={() => go("blog")} className="text-xs uppercase tracking-widest mb-6" style={{ color: GOLD }}>← Back to blog</button>
+      <div className="aspect-[16/9] rounded-sm flex items-center justify-center text-6xl mb-6" style={{ background: `radial-gradient(circle at 30% 25%, ${NAVY_SOFT}, ${BLACK})` }}>{p.cover || "📝"}</div>
+      <p className="text-[11px] uppercase tracking-[0.3em]" style={{ color: GOLD }}>{p.date}</p>
+      <h1 className="mt-1 mb-5" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 700, fontSize: "clamp(1.8rem,4vw,2.6rem)", lineHeight: 1.1 }}>{p.title}</h1>
+      <div className="text-sm leading-relaxed space-y-4" style={{ color: "#4A453C" }}>
+        {p.body.split("\n\n").map((para, i) => <p key={i}>{para}</p>)}
+      </div>
+      <div className="mt-8 flex flex-wrap gap-3">
+        <GoldButton onClick={() => go("shop")}>Shop the Look</GoldButton>
+        <GoldButton outline onClick={() => go("stylist")}>Ask the Style Advisor</GoldButton>
+      </div>
+      {others.length > 0 && (
+        <div className="mt-12">
+          <p className="text-xs uppercase tracking-widest mb-3" style={{ color: GOLD }}>More from the journal</p>
+          <div className="grid gap-2">
+            {others.map((o) => <button key={o.id} onClick={() => go("post", o.id)} className="text-left p-3 rounded-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}><span className="text-sm font-medium" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 16 }}>{o.cover} {o.title}</span></button>)}
+          </div>
+        </div>
+      )}
+    </article>
+  );
+}
+
+/* ================= ADMIN: BLOG ================= */
+function AdminBlog({ posts, savePosts, showToast }) {
+  const [editing, setEditing] = useState(null);
+  if (editing) {
+    return <BlogForm posts={posts} savePosts={savePosts} showToast={showToast} editing={editing === "new" ? null : editing} done={() => setEditing(null)} />;
+  }
+  const remove = (id) => { if (window.confirm("Delete this post?")) { savePosts(posts.filter((p) => p.id !== id)); showToast("Post deleted"); } };
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-4"><p className="text-sm" style={{ color: MUTED }}>{posts.length} posts</p><GoldButton small onClick={() => setEditing("new")}>+ New Post</GoldButton></div>
+      <div className="grid gap-3">
+        {posts.map((p) => (
+          <div key={p.id} className="flex items-center gap-3 p-3 rounded-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }}>
+            <span className="text-2xl">{p.cover || "📝"}</span>
+            <div className="flex-1 min-w-0"><p className="font-medium text-sm truncate">{p.title}</p><p className="text-xs" style={{ color: MUTED }}>{p.date}</p></div>
+            <GoldButton small outline onClick={() => setEditing(p)}>Edit</GoldButton>
+            <button onClick={() => remove(p.id)} className="px-3 py-2 text-xs rounded-sm uppercase tracking-wider" style={{ border: "1.5px solid #C0392B", color: "#C0392B" }}>Delete</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+function BlogForm({ posts, savePosts, showToast, editing, done }) {
+  const [f, setF] = useState(editing || { title: "", date: todayISO(), cover: "📝", excerpt: "", body: "" });
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const inputStyle = { background: WHITE, border: `1px solid ${CREAM_DARK}` };
+  const save = () => {
+    if (!f.title.trim() || !f.body.trim()) { showToast("Title and body are required"); return; }
+    if (editing) savePosts(posts.map((p) => p.id === editing.id ? { ...f, id: editing.id } : p));
+    else savePosts([{ ...f, id: uid() }, ...posts]);
+    showToast(editing ? "Post updated" : "Post published"); done();
+  };
+  return (
+    <div className="max-w-2xl">
+      <button onClick={done} className="text-xs uppercase tracking-widest mb-4" style={{ color: GOLD }}>← Back to posts</button>
+      <h2 className="mb-4" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 700, fontSize: 24 }}>{editing ? "Edit Post" : "New Post"}</h2>
+      <div className="grid gap-3">
+        <input value={f.title} onChange={set("title")} placeholder="Post title *" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
+        <div className="grid grid-cols-2 gap-3">
+          <label className="text-sm"><span className="block text-xs uppercase tracking-widest mb-1" style={{ color: MUTED }}>Date</span><input type="date" value={f.date} onChange={set("date")} className="w-full px-3 py-2.5 rounded-sm text-sm" style={inputStyle} /></label>
+          <label className="text-sm"><span className="block text-xs uppercase tracking-widest mb-1" style={{ color: MUTED }}>Cover emoji</span><input value={f.cover} onChange={set("cover")} placeholder="📝" className="w-full px-3 py-2.5 rounded-sm text-sm" style={inputStyle} /></label>
+        </div>
+        <textarea value={f.excerpt} onChange={set("excerpt")} rows={2} placeholder="Short excerpt (shown on the blog list)" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
+        <textarea value={f.body} onChange={set("body")} rows={8} placeholder="Write your post. Leave a blank line between paragraphs." className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
+        <div className="flex gap-3"><GoldButton onClick={save}>{editing ? "Save Changes" : "Publish Post"}</GoldButton><GoldButton outline onClick={done}>Cancel</GoldButton></div>
+      </div>
     </div>
   );
 }

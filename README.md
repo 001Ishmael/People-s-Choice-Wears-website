@@ -19,6 +19,9 @@ An admin dashboard manages products and orders.
 - Floating WhatsApp, Facebook & TikTok buttons on every page
 - Admin: add/edit/delete products, image upload, stock = Available / Sold Out / Coming Soon, feature toggles
 - Order management with daily/weekly/monthly counts, search, status & payment tracking
+- **PC Cosmetics** page (lipsticks, foundation, palettes, skincare and more)
+- **Blog** with admin authoring (write, edit, delete posts)
+- **AI Style Advisor** chatbot for outfit design & color advice
 - Loading animation, smooth scroll, mobile-first, SEO meta tags
 
 ## Business details
@@ -68,3 +71,21 @@ For product images at scale, store them in Supabase Storage or Cloudinary and sa
 - Add your Google Map embed where the map placeholder is on the Contact page.
 - Sample products ship so the shop never looks empty — delete them as you add real items,
   or restore them from Settings.
+
+## Make the Style Advisor fully live (AI)
+
+The **Style Advisor** page gives outfit and color advice. Out of the box on a deployed
+site it uses a built-in stylist (smart keyword-based suggestions) so it always works with
+no setup. To power it with live AI, route its request through a small serverless function
+that holds your Anthropic API key (never put the key in frontend code):
+
+1. Get an API key from https://console.anthropic.com
+2. On Vercel, add a serverless function at `api/style.js` that forwards the chat messages
+   to `https://api.anthropic.com/v1/messages` with your key in the `x-api-key` header and
+   `anthropic-version: 2023-06-01`. Store the key as a Vercel Environment Variable.
+3. In `src/App.jsx`, change the Style Advisor `fetch("https://api.anthropic.com/v1/messages", ...)`
+   call to `fetch("/api/style", ...)` so it calls your function instead.
+
+If the AI call ever fails, the page automatically falls back to the built-in advisor, so
+customers always get useful guidance.
+
