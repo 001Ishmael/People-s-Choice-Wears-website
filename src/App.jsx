@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { sGet, sSet } from "./lib/store.js";
 import { isSupabase } from "./lib/supabase.js";
-import { signIn, signOut, currentStaff, saveInvoiceRecord, saveReceiptRecord } from "./lib/db.js";
+import { signIn, signOut, currentStaff, saveInvoiceRecord, saveReceiptRecord, customerSignUp, customerSignIn, customerSignOut, currentCustomer, customerOrders } from "./lib/db.js";
 
 /* ============================================================
    PC WEARS — People's Choice Wears  ·  v2 (Premium)
@@ -285,12 +285,12 @@ export default function App() {
       setOrders(await sGet("pcw2:orders", [], true));
       const bp = await sGet("pcw2:posts", null, true);
       if (bp && Array.isArray(bp) && bp.length) setPosts(bp);
-      else { setPosts(SEED_POSTS); if (!isSupabase) sSet("pcw2:posts", SEED_POSTS, true); }
+      else if (!isSupabase) { setPosts(SEED_POSTS); sSet("pcw2:posts", SEED_POSTS, true); } else { setPosts(bp || []); }
       setCustomers(await sGet("pcw2:customers", [], true));
       setFabrics(await sGet("pcw2:fabrics", [], true));
       const tm = await sGet("pcw2:team", null, true);
       if (tm && Array.isArray(tm) && tm.length) setTeam(tm);
-      else { setTeam(SEED_TEAM); if (!isSupabase) sSet("pcw2:team", SEED_TEAM, true); }
+      else if (!isSupabase) { setTeam(SEED_TEAM); sSet("pcw2:team", SEED_TEAM, true); } else { setTeam(tm || []); }
       setStaff(await sGet("pcw2:staff", [], true));
       const accs = await sGet("pcw2:accounts", [], true); setAccounts(accs);
       setNotices(await sGet("pcw2:notices", [], true));
@@ -298,8 +298,12 @@ export default function App() {
       setExpenses(await sGet("pcw2:expenses", [], true));
       setMovements(await sGet("pcw2:movements", [], true));
       setDelivery(await sGet("pcw2:delivery", [], true));
-      const sid = await sGet("pcw2:session", null, false);
-      if (sid) { const me = accs.find((a) => a.id === sid); if (me) setAccount(me); }
+      if (isSupabase) {
+        try { const me = await currentCustomer(); if (me) setAccount(me); } catch (e) { /* not signed in */ }
+      } else {
+        const sid = await sGet("pcw2:session", null, false);
+        if (sid) { const me = accs.find((a) => a.id === sid); if (me) setAccount(me); }
+      }
       setCart(await sGet("pcw2:cart", [], false));
       setWishlist(await sGet("pcw2:wishlist", [], false));
       const pass = await sGet("pcw2:adminpass", null, true);
@@ -317,7 +321,9 @@ export default function App() {
     setMovements(await sGet("pcw2:movements", [], true));
     setDelivery(await sGet("pcw2:delivery", [], true));
     setStaff(await sGet("pcw2:staff", [], true));
-    if (isSupabase) setProducts(await sGet("pcw2:products", [], true));
+    setExpenses(await sGet("pcw2:expenses", [], true));
+    setInvestments(await sGet("pcw2:investments", [], true));
+    if (isSupabase) { setProducts(await sGet("pcw2:products", [], true)); setPosts(await sGet("pcw2:posts", [], true)); setTeam(await sGet("pcw2:team", [], true)); }
   };
 
   const saveProducts = (n) => { setProducts(n); sSet("pcw2:products", n, true); };
@@ -2009,17 +2015,48 @@ function AdminInventory({ fabrics, saveFabrics, products, movements, saveMovemen
 function AccountPage({ accounts, saveAccounts, account, loginAccount, notices, orders, investments, wishlist, products, cart, cartTotal, go, showToast }) {
   const [mode, setMode] = useState("login");
   const [form, setForm] = useState({ name: "", email: "", phone: "", passcode: "" });
+  const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const inputStyle = { background: WHITE, border: `1px solid ${CREAM_DARK}` };
+  const [supaOrders, setSupaOrders] = useState(null);
+
+  // Pull this customer's orders from Supabase (row-level security returns only theirs)
+  useEffect(() => {
+    if (isSupabase && account) { customerOrders().then(setSupaOrders).catch(() => setSupaOrders([])); }
+  }, [account]);
 
   if (!account) {
-    const doSignup = () => {
+    const doSignup = async () => {
+      if (isSupabase) {
+        if (!form.name.trim() || !form.email.trim() || !form.passcode.trim()) { showToast("Name, email and password required"); return; }
+        if (form.passcode.length < 6) { showToast("Password must be at least 6 characters"); return; }
+        setBusy(true);
+        try {
+          await customerSignUp(form.email.trim(), form.passcode, form.name.trim(), form.phone.trim());
+          const me = await currentCustomer();
+          if (me) { loginAccount(me); showToast("Welcome to PC Wears!"); }
+          else showToast("Account created. Please check your email to confirm, then log in.");
+        } catch (e) { showToast(e.message || "Sign up failed"); }
+        finally { setBusy(false); }
+        return;
+      }
       if (!form.name.trim() || !form.email.trim() || !form.passcode.trim()) { showToast("Name, email and passcode required"); return; }
       if (accounts.some((a) => a.email.toLowerCase() === form.email.trim().toLowerCase())) { showToast("An account with that email exists — please log in"); return; }
       const acc = { id: uid(), name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim(), passcode: form.passcode, createdAt: todayISO(), lastSeen: todayISO() };
       saveAccounts([acc, ...accounts]); loginAccount(acc); showToast("Welcome to PC Wears!");
     };
-    const doLogin = () => {
+    const doLogin = async () => {
+      if (isSupabase) {
+        setBusy(true);
+        try {
+          await customerSignIn(form.email.trim(), form.passcode);
+          const me = await currentCustomer();
+          if (me) { loginAccount(me); showToast("Welcome back!"); }
+          else showToast("Could not load your profile. Please try again.");
+        } catch (e) { showToast(e.message || "Login failed"); }
+        finally { setBusy(false); }
+        return;
+      }
       const acc = accounts.find((a) => a.email.toLowerCase() === form.email.trim().toLowerCase() && a.passcode === form.passcode);
       if (!acc) { showToast("Email or passcode is incorrect"); return; }
       loginAccount({ ...acc, lastSeen: todayISO() });
@@ -2030,18 +2067,20 @@ function AccountPage({ accounts, saveAccounts, account, loginAccount, notices, o
         <div className="text-center mb-6"><Crest size={52} /><h1 className="mt-3" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 700, fontSize: 28 }}>{mode === "login" ? "Welcome back" : "Create your account"}</h1><p className="text-xs mt-1" style={{ color: MUTED }}>Save your cart, track orders and get new-stock alerts.</p></div>
         <div className="grid gap-3">
           {mode === "signup" && <input value={form.name} onChange={set("name")} placeholder="Full name" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />}
-          <input value={form.email} onChange={set("email")} placeholder="Email" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
+          <input type="email" value={form.email} onChange={set("email")} placeholder="Email" autoComplete="username" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
           {mode === "signup" && <input value={form.phone} onChange={set("phone")} placeholder="Phone / WhatsApp (optional)" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />}
-          <input type="password" value={form.passcode} onChange={set("passcode")} placeholder="Passcode" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
-          <GoldButton full onClick={mode === "login" ? doLogin : doSignup}>{mode === "login" ? "Log In" : "Sign Up"}</GoldButton>
+          <input type="password" value={form.passcode} onChange={set("passcode")} placeholder={isSupabase ? "Password" : "Passcode"} autoComplete="current-password" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
+          <GoldButton full onClick={mode === "login" ? doLogin : doSignup} disabled={busy}>{busy ? "Please wait…" : (mode === "login" ? "Log In" : "Sign Up")}</GoldButton>
           <button onClick={() => setMode(mode === "login" ? "signup" : "login")} className="text-xs uppercase tracking-widest" style={{ color: GOLD }}>{mode === "login" ? "New here? Create an account" : "Already have an account? Log in"}</button>
         </div>
-        <p className="text-[11px] mt-5 text-center" style={{ color: MUTED }}>Note: simple account for convenience — please don't reuse an important password. Secure accounts arrive when the online database is connected.</p>
+        <p className="text-[11px] mt-5 text-center" style={{ color: MUTED }}>{isSupabase ? "Your account is secured by Supabase. We never see your password." : "Note: simple local account for convenience until the database is connected."}</p>
       </div>
     );
   }
 
-  const myOrders = orders.filter((o) => (o.phone && account.phone && o.phone === account.phone) || (o.customer && o.customer.toLowerCase() === account.name.toLowerCase()));
+  const myOrders = (isSupabase && supaOrders != null)
+    ? supaOrders
+    : orders.filter((o) => (o.phone && account.phone && o.phone === account.phone) || (o.customer && o.customer.toLowerCase() === account.name.toLowerCase()));
   const myInvest = investments.filter((i) => (i.accountId === account.id) || (i.phone && account.phone && i.phone === account.phone));
   const saved = products.filter((p) => wishlist.includes(p.id));
   const markSeen = () => { const upd = { ...account, lastSeen: todayISO() }; loginAccount(upd); saveAccounts(accounts.map((a) => a.id === account.id ? upd : a)); };
@@ -2050,7 +2089,7 @@ function AccountPage({ accounts, saveAccounts, account, loginAccount, notices, o
     <div className="max-w-4xl mx-auto px-4 py-10">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
         <SectionTitle eyebrow={`Hello, ${account.name.split(" ")[0]}`} title="My Account" />
-        <GoldButton small outline onClick={() => loginAccount(null)}>Log Out</GoldButton>
+        <GoldButton small outline onClick={() => { if (isSupabase) customerSignOut(); loginAccount(null); }}>Log Out</GoldButton>
       </div>
 
       <div className="grid sm:grid-cols-3 gap-3 mb-6">

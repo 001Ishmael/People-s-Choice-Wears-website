@@ -271,6 +271,62 @@ async function syncDelivery(arr) {
 }
 
 /* ============================================================
+   TEAM (public profiles)
+   ============================================================ */
+async function listTeam() {
+  const { data, error } = await supabase.from("team").select("*").order("sort_order", { ascending: true });
+  if (error) throw error;
+  return data.map((r) => ({ id: r.id, name: r.name, role: r.role, bio: r.bio || "", phone: r.phone || "", email: r.email || "", social: r.social || "", image: r.image_url || null, active: r.active, sortOrder: r.sort_order }));
+}
+async function syncTeam(arr) {
+  const rows = [];
+  for (let i = 0; i < arr.length; i++) {
+    const t = arr[i];
+    rows.push({ id: t.id, name: t.name, role: t.role, bio: t.bio || null, phone: t.phone || null, email: t.email || null, social: t.social || null, active: t.active !== false, sort_order: t.sortOrder != null ? t.sortOrder : i + 1, image_url: await uploadImage("team-photos", t.image) });
+  }
+  await upsertAndPrune("team", rows);
+}
+
+/* ============================================================
+   BLOG POSTS (public)
+   ============================================================ */
+async function listPosts() {
+  const { data, error } = await supabase.from("blog_posts").select("*").order("post_date", { ascending: false });
+  if (error) throw error;
+  return data.map((r) => ({ id: r.id, title: r.title, date: r.post_date, cover: r.cover || "📝", excerpt: r.excerpt || "", body: r.body || "" }));
+}
+async function syncPosts(arr) {
+  const rows = arr.map((p) => ({ id: p.id, title: p.title, post_date: p.date || null, cover: p.cover || null, excerpt: p.excerpt || null, body: p.body || null }));
+  await upsertAndPrune("blog_posts", rows);
+}
+
+/* ============================================================
+   EXPENSES (staff only)
+   ============================================================ */
+async function listExpenses() {
+  const { data, error } = await supabase.from("expenses").select("*").order("expense_date", { ascending: false });
+  if (error) throw error;
+  return data.map((r) => ({ id: r.id, date: r.expense_date, category: r.category || "", amount: Number(r.amount), note: r.note || "" }));
+}
+async function syncExpenses(arr) {
+  const rows = arr.map((e) => ({ id: e.id, expense_date: e.date || null, category: e.category || null, amount: Number(e.amount) || 0, note: e.note || null }));
+  await upsertAndPrune("expenses", rows);
+}
+
+/* ============================================================
+   INVESTORS (internal ledger, staff only)
+   ============================================================ */
+async function listInvestors() {
+  const { data, error } = await supabase.from("investors").select("*").order("created_at", { ascending: false });
+  if (error) throw error;
+  return data.map((r) => ({ id: r.id, name: r.name, phone: r.phone || "", principal: Number(r.principal), rate: Number(r.rate), startDate: r.start_date || "", note: r.note || "", payouts: r.payouts || [] }));
+}
+async function syncInvestors(arr) {
+  const rows = arr.map((i) => ({ id: i.id, name: i.name, phone: i.phone || null, principal: Number(i.principal) || 0, rate: Number(i.rate) || 0, start_date: i.startDate || null, note: i.note || null, payouts: i.payouts || [] }));
+  await upsertAndPrune("investors", rows);
+}
+
+/* ============================================================
    key -> {list, sync} registry used by store.js
    ============================================================ */
 export const TABLES = {
@@ -283,6 +339,10 @@ export const TABLES = {
   "pcw2:invoices":  { list: listInvoices,  sync: async () => {} },
   "pcw2:receipts":  { list: listReceipts,  sync: async () => {} },
   "pcw2:delivery":  { list: listDelivery,  sync: syncDelivery },
+  "pcw2:team":      { list: listTeam,      sync: syncTeam },
+  "pcw2:posts":     { list: listPosts,     sync: syncPosts },
+  "pcw2:expenses":  { list: listExpenses,  sync: syncExpenses },
+  "pcw2:investments": { list: listInvestors, sync: syncInvestors },
 };
 
 /* ---- Supabase Auth helpers ---- */
@@ -297,4 +357,45 @@ export async function currentStaff() {
   if (!user) return null;
   const { data } = await supabase.from("staff").select("*").eq("auth_user_id", user.id).maybeSingle();
   return data ? { name: data.name, role: data.role, active: data.active } : null;
+}
+
+
+/* ---- Customer accounts (Supabase Auth) ---- */
+export async function customerSignUp(email, password, name, phone) {
+  const { data, error } = await supabase.auth.signUp({ email, password });
+  if (error) throw error;
+  // If a session exists (email confirmation disabled), create the profile row now.
+  if (data.user) {
+    await supabase.from("customers").upsert(
+      { auth_user_id: data.user.id, name, phone: phone || "" },
+      { onConflict: "auth_user_id" }
+    );
+  }
+  return data.user;
+}
+export async function customerSignIn(email, password) {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+  return data.user;
+}
+export async function customerSignOut() { await supabase.auth.signOut(); }
+
+export async function currentCustomer() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  let { data } = await supabase.from("customers").select("*").eq("auth_user_id", user.id).maybeSingle();
+  if (!data) {
+    // First sign-in after email confirmation: create the profile from auth metadata.
+    const meta = user.user_metadata || {};
+    const ins = await supabase.from("customers").insert({ auth_user_id: user.id, name: meta.name || (user.email || "Customer"), phone: meta.phone || "" }).select().maybeSingle();
+    data = ins.data;
+  }
+  if (!data) return null;
+  return { id: data.id, name: data.name, phone: data.phone || "", email: user.email, createdAt: (data.created_at || "").slice(0,10) };
+}
+// Orders belonging to the signed-in customer (RLS returns only their own rows)
+export async function customerOrders() {
+  const { data, error } = await supabase.from("orders").select("*, payments(*)").order("created_at", { ascending: false });
+  if (error) return [];
+  return data.map((r) => ({ id: r.id, orderId: r.order_no, customer: r.customer_name, phone: r.customer_phone || "", product: r.product, qty: r.quantity, total: Number(r.total), status: r.status, createdAt: (r.created_at||"").slice(0,10), payments: (r.payments||[]).map((p)=>({ amount: Number(p.amount) })) }));
 }

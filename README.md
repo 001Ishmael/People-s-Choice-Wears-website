@@ -199,9 +199,16 @@ routes each collection to the right place.
 staff records, inventory (+ stock movements), invoices, receipts, **delivery records**, and uploaded images
 (Supabase Storage buckets: `product-images`, `staff-photos`, `customer-files`, `order-files`).
 
-**Still local (per-device) by design:** cart, wishlist, customer accounts, blog, team,
-expenses, investor ledger, notifications. These have no table in the SQL you ran; tell me if
-you want them moved to Supabase too and I'll extend the schema and the data layer.
+**Also saved to Supabase (Phase 2):** team profiles, blog posts, expenses, and the investor
+ledger. Run `supabase/pcwears_supabase_phase2.sql` once to create those tables.
+
+**Customer accounts now use Supabase Auth.** Shoppers sign up / sign in with email + password;
+their profile is stored in the `customers` table (linked by `auth_user_id`) and they can see
+their own orders. If email confirmation is ON in Supabase, new sign-ups must confirm via email
+before their first login (you can turn it off in Authentication → Providers → Email).
+
+**Still local (per-device) by design:** cart, wishlist and new-stock notifications — these are
+session/device data and don't need a table.
 
 ### Environment variables (already set in Vercel)
 
