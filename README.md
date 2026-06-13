@@ -196,7 +196,7 @@ This project is wired to Supabase for the back-office data. The data layer lives
 routes each collection to the right place.
 
 **Saved to Supabase:** products, customers (+ measurements), orders (+ payments + materials),
-staff records, inventory (+ stock movements), invoices, receipts, and uploaded images
+staff records, inventory (+ stock movements), invoices, receipts, **delivery records**, and uploaded images
 (Supabase Storage buckets: `product-images`, `staff-photos`, `customer-files`, `order-files`).
 
 **Still local (per-device) by design:** cart, wishlist, customer accounts, blog, team,

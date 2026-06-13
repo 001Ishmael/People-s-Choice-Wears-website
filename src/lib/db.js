@@ -249,6 +249,28 @@ async function upsertAndPrune(table, rows) {
 }
 
 /* ============================================================
+   DELIVERY RECORDS
+   ============================================================ */
+async function listDelivery() {
+  const { data, error } = await supabase.from("delivery_records").select("*").order("created_at", { ascending: false });
+  if (error) throw error;
+  return data.map((r) => ({
+    id: r.id, orderId: r.order_id, method: r.method, address: r.address || "",
+    status: r.status, scheduledDate: r.scheduled_date || "", deliveredAt: r.delivered_at || "",
+    courier: r.courier || "", fee: Number(r.fee), note: r.note || "",
+  }));
+}
+async function syncDelivery(arr) {
+  const rows = arr.map((d) => ({
+    id: d.id, order_id: d.orderId || null, method: d.method || "delivery", address: d.address || null,
+    status: d.status || "scheduled", scheduled_date: d.scheduledDate || null,
+    delivered_at: d.status === "delivered" && !d.deliveredAt ? new Date().toISOString() : (d.deliveredAt || null),
+    courier: d.courier || null, fee: Number(d.fee) || 0, note: d.note || null,
+  }));
+  await upsertAndPrune("delivery_records", rows);
+}
+
+/* ============================================================
    key -> {list, sync} registry used by store.js
    ============================================================ */
 export const TABLES = {
@@ -260,6 +282,7 @@ export const TABLES = {
   "pcw2:orders":    { list: listOrders,    sync: syncOrders },
   "pcw2:invoices":  { list: listInvoices,  sync: async () => {} },
   "pcw2:receipts":  { list: listReceipts,  sync: async () => {} },
+  "pcw2:delivery":  { list: listDelivery,  sync: syncDelivery },
 };
 
 /* ---- Supabase Auth helpers ---- */

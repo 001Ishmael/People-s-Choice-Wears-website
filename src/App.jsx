@@ -95,13 +95,13 @@ const SEED_TEAM = [
 ];
 
 const ROLES = {
-  owner:   { label: "Owner / Admin", tabs: ["dashboard","customers","orders","products","inventory","investments","expenses","reports","team","blog","staff","settings"] },
-  manager: { label: "Manager",       tabs: ["dashboard","customers","orders","products","inventory","investments","expenses","reports","team","blog"] },
-  sales:   { label: "Sales Staff",   tabs: ["dashboard","customers","orders","expenses"] },
-  tailor:  { label: "Tailor / Production", tabs: ["dashboard","orders"] },
+  owner:   { label: "Owner / Admin", tabs: ["dashboard","customers","orders","delivery","products","inventory","investments","expenses","reports","team","blog","staff","settings"] },
+  manager: { label: "Manager",       tabs: ["dashboard","customers","orders","delivery","products","inventory","investments","expenses","reports","team","blog"] },
+  sales:   { label: "Sales Staff",   tabs: ["dashboard","customers","orders","delivery","expenses"] },
+  tailor:  { label: "Tailor / Production", tabs: ["dashboard","orders","delivery"] },
   viewer:  { label: "Viewer",        tabs: ["dashboard","customers","orders"] },
 };
-const TAB_LABELS = { dashboard:"Dashboard", customers:"Customers", orders:"Orders", products:"Products", inventory:"Inventory", investments:"Investments", expenses:"Expenses", reports:"Reports", team:"Team", blog:"Blog", staff:"Staff", settings:"Settings" };
+const TAB_LABELS = { dashboard:"Dashboard", customers:"Customers", orders:"Orders", delivery:"Delivery", products:"Products", inventory:"Inventory", investments:"Investments", expenses:"Expenses", reports:"Reports", team:"Team", blog:"Blog", staff:"Staff", settings:"Settings" };
 const EXPENSE_CATS = ["Fabric & Materials","Stock Purchase","Rent","Utilities","Salaries","Transport/Delivery","Marketing","Equipment","Other"];
 
 const MEN_MEASURE = ["Shoulder","Chest","Waist","Hip","Sleeve length","Top length","Trouser waist","Trouser length","Thigh","Neck","Cap size"];
@@ -264,6 +264,7 @@ export default function App() {
   const [investments, setInvestments] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [movements, setMovements] = useState([]);
+  const [delivery, setDelivery] = useState([]);
   const [products, setProducts] = useState(null);
   const [orders, setOrders] = useState([]);
   const [cart, setCart] = useState([]);
@@ -296,6 +297,7 @@ export default function App() {
       setInvestments(await sGet("pcw2:investments", [], true));
       setExpenses(await sGet("pcw2:expenses", [], true));
       setMovements(await sGet("pcw2:movements", [], true));
+      setDelivery(await sGet("pcw2:delivery", [], true));
       const sid = await sGet("pcw2:session", null, false);
       if (sid) { const me = accs.find((a) => a.id === sid); if (me) setAccount(me); }
       setCart(await sGet("pcw2:cart", [], false));
@@ -313,6 +315,7 @@ export default function App() {
     setCustomers(await sGet("pcw2:customers", [], true));
     setFabrics(await sGet("pcw2:fabrics", [], true));
     setMovements(await sGet("pcw2:movements", [], true));
+    setDelivery(await sGet("pcw2:delivery", [], true));
     setStaff(await sGet("pcw2:staff", [], true));
     if (isSupabase) setProducts(await sGet("pcw2:products", [], true));
   };
@@ -331,6 +334,7 @@ export default function App() {
   const saveInvestments = (n) => { setInvestments(n); sSet("pcw2:investments", n, true); };
   const saveExpenses = (n) => { setExpenses(n); sSet("pcw2:expenses", n, true); };
   const saveMovements = (n) => { setMovements(n); sSet("pcw2:movements", n, true); };
+  const saveDelivery = (n) => { setDelivery(n); sSet("pcw2:delivery", n, true); };
   const loginAccount = (a) => { setAccount(a); sSet("pcw2:session", a ? a.id : null, false); };
   const pushNotice = (text, type = "info") => { const n = [{ id: uid(), text, type, date: todayISO() }, ...notices].slice(0, 50); setNotices(n); sSet("pcw2:notices", n, true); };
 
@@ -358,7 +362,7 @@ export default function App() {
     custom: "Hello PC Wears, I'd like to ask about a custom outfit.",
   }[route.page] || "Hello PC Wears, I'd like to make an inquiry.";
 
-  const pp = { products, saveProducts, orders, saveOrders, reloadSecure, posts, savePosts, customers, saveCustomers, team, saveTeam, staff, saveStaff, fabrics, saveFabrics, accounts, saveAccounts, account, loginAccount, notices, saveNotices, pushNotice, investments, saveInvestments, expenses, saveExpenses, movements, saveMovements, role, setRole, staffName, setStaffName, cart, saveCart, wishlist, toggleWish, go, addToCart, cartTotal, showToast, adminPass, setAdminPass, isAdmin, setIsAdmin, setQuickView };
+  const pp = { products, saveProducts, orders, saveOrders, reloadSecure, posts, savePosts, customers, saveCustomers, team, saveTeam, staff, saveStaff, fabrics, saveFabrics, accounts, saveAccounts, account, loginAccount, notices, saveNotices, pushNotice, investments, saveInvestments, expenses, saveExpenses, movements, saveMovements, delivery, saveDelivery, role, setRole, staffName, setStaffName, cart, saveCart, wishlist, toggleWish, go, addToCart, cartTotal, showToast, adminPass, setAdminPass, isAdmin, setIsAdmin, setQuickView };
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: CREAM, color: INK, fontFamily: "'Jost', sans-serif" }}>
@@ -1045,6 +1049,7 @@ function AdminDashboard(props) {
       {tab === "dashboard" && <AdminSummary {...props} setTab={setTab} />}
       {tab === "customers" && <AdminCustomers {...props} readOnly={readOnly} />}
       {tab === "orders" && <AdminOrders {...props} readOnly={readOnly} />}
+      {tab === "delivery" && <AdminDelivery {...props} readOnly={readOnly} />}
       {tab === "products" && <AdminProducts {...props} />}
       {tab === "inventory" && <AdminInventory {...props} />}
       {tab === "investments" && <AdminInvestments {...props} />}
@@ -1128,7 +1133,7 @@ function ProductForm({ products, saveProducts, showToast, editing, done, pushNot
   );
 }
 /* ================= ADMIN: ORDERS (full) ================= */
-function AdminOrders({ orders, saveOrders, customers, products, staff, fabrics, saveFabrics, movements, saveMovements, showToast, readOnly }) {
+function AdminOrders({ orders, saveOrders, customers, products, staff, fabrics, saveFabrics, movements, saveMovements, delivery, saveDelivery, showToast, readOnly }) {
   const [editing, setEditing] = useState(null);
   const [invoiceFor, setInvoiceFor] = useState(null);
   const [search, setSearch] = useState("");
@@ -1220,7 +1225,7 @@ function AdminOrders({ orders, saveOrders, customers, products, staff, fabrics, 
   );
 }
 
-function OrderForm({ orders, saveOrders, customers, products, staff, fabrics, saveFabrics, movements, saveMovements, showToast, editing, done }) {
+function OrderForm({ orders, saveOrders, customers, products, staff, fabrics, saveFabrics, movements, saveMovements, delivery, saveDelivery, showToast, editing, done }) {
   const base = editing || { customerId: "", customer: "", phone: "", category: "africana", product: "", styleName: "", fabricType: "", fabricColor: "", qty: 1, price: "", discount: "", status: "pending", deliveryDate: "", tailor: "", instructions: "", fulfil: "delivery", refImage: null, payments: [], materials: [] };
   const [f, setF] = useState({ ...base, payments: base.payments || [], materials: base.materials || [] });
   const [mat, setMat] = useState({ fabricId: "", qty: "" });
@@ -1930,7 +1935,7 @@ function AdminStaff({ staff, saveStaff, showToast }) {
 }
 
 /* ================= ADMIN: INVENTORY (fabric stock) ================= */
-function AdminInventory({ fabrics, saveFabrics, products, movements, saveMovements, showToast }) {
+function AdminInventory({ fabrics, saveFabrics, products, movements, saveMovements, delivery, saveDelivery, showToast }) {
   const [f, setF] = useState({ name: "", color: "", qty: "", unit: "yards" });
   const [mv, setMv] = useState({ fabricId: "", type: "in", qty: "", reason: "" });
   const inputStyle = { background: WHITE, border: `1px solid ${CREAM_DARK}` };
@@ -2303,6 +2308,94 @@ function AdminReports({ orders, expenses, customers, investments, movements }) {
           ))}
       </div>
       <p className="text-xs mt-4" style={{ color: MUTED }}>Revenue counts actual payments received in the period; sales booked counts the full value of orders created in the period. Net = revenue − expenses − investment returns paid.</p>
+    </div>
+  );
+}
+
+/* ================= ADMIN: DELIVERY RECORDS ================= */
+const DELIVERY_STATUS = [["scheduled","Scheduled"],["out_for_delivery","Out for Delivery"],["delivered","Delivered"],["picked_up","Picked Up"],["failed","Failed"],["cancelled","Cancelled"]];
+const DELIVERY_COLOR = { scheduled: GOLD, out_for_delivery: "#2980B9", delivered: "#2E7D32", picked_up: "#2E7D32", failed: "#C0392B", cancelled: "#C0392B" };
+
+function AdminDelivery({ delivery, saveDelivery, orders, customers, showToast, readOnly }) {
+  const [adding, setAdding] = useState(false);
+  const [statusF, setStatusF] = useState("all");
+  const inputStyle = { background: WHITE, border: `1px solid ${CREAM_DARK}` };
+  const orderLabel = (id) => { const o = orders.find((x) => x.id === id); return o ? `${o.orderId || ""} · ${o.customer}` : "—"; };
+
+  const update = (id, patch) => saveDelivery(delivery.map((d) => d.id === id ? { ...d, ...patch } : d));
+  const remove = (id) => { if (window.confirm("Delete this delivery record?")) { saveDelivery(delivery.filter((d) => d.id !== id)); showToast("Deleted"); } };
+  const list = delivery.filter((d) => statusF === "all" || d.status === statusF);
+
+  if (adding) return <DeliveryForm delivery={delivery} saveDelivery={saveDelivery} orders={orders} customers={customers} showToast={showToast} done={() => setAdding(false)} />;
+
+  return (
+    <div>
+      <div className="flex flex-wrap gap-2 mb-4 items-center">
+        <select value={statusF} onChange={(e) => setStatusF(e.target.value)} className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle}>
+          <option value="all">All statuses</option>{DELIVERY_STATUS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        </select>
+        <span className="flex-1" />
+        {!readOnly && <GoldButton small onClick={() => setAdding(true)}>+ New Delivery Record</GoldButton>}
+      </div>
+      {!list.length && <p className="text-sm py-8 text-center" style={{ color: MUTED }}>No delivery records yet. Create one to track a pickup or delivery.</p>}
+      <div className="grid gap-3">
+        {list.map((d) => (
+          <div key={d.id} className="p-4 rounded-sm" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}`, borderLeft: `4px solid ${DELIVERY_COLOR[d.status] || GOLD}` }}>
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <p className="font-medium text-sm">{d.method === "pickup" ? "Pickup" : "Delivery"} · {orderLabel(d.orderId)}</p>
+                <p className="text-xs mt-0.5" style={{ color: MUTED }}>{[d.address, d.courier && `Courier: ${d.courier}`, d.scheduledDate && `Scheduled: ${d.scheduledDate}`, d.fee ? `Fee: ${fmtLe(d.fee)}` : ""].filter(Boolean).join(" · ")}</p>
+                {d.note && <p className="text-xs mt-1 italic" style={{ color: MUTED }}>{d.note}</p>}
+              </div>
+              <div className="flex flex-col items-end gap-2 no-print">
+                {!readOnly && <select value={d.status} onChange={(e) => update(d.id, { status: e.target.value })} className="px-2 py-1.5 rounded-sm text-xs" style={{ ...inputStyle, borderColor: DELIVERY_COLOR[d.status] }}>{DELIVERY_STATUS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>}
+                {!readOnly && <button onClick={() => remove(d.id)} className="text-xs underline" style={{ color: "#C0392B" }}>Delete</button>}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DeliveryForm({ delivery, saveDelivery, orders, customers, showToast, done }) {
+  const [f, setF] = useState({ orderId: "", method: "delivery", address: "", status: "scheduled", scheduledDate: todayISO(), courier: "", fee: "", note: "" });
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const inputStyle = { background: WHITE, border: `1px solid ${CREAM_DARK}` };
+  const pickOrder = (id) => {
+    const o = orders.find((x) => x.id === id);
+    const cust = o ? customers.find((c) => c.id === o.customerId) : null;
+    setF({ ...f, orderId: id, method: o?.fulfil || "delivery", address: cust?.address || f.address, scheduledDate: o?.deliveryDate || f.scheduledDate });
+  };
+  const save = () => {
+    saveDelivery([{ ...f, id: uid(), fee: Number(f.fee) || 0 }, ...delivery]);
+    showToast("Delivery record saved"); done();
+  };
+  return (
+    <div className="max-w-2xl">
+      <button onClick={done} className="text-xs uppercase tracking-widest mb-4" style={{ color: GOLD }}>← Back to delivery</button>
+      <h2 className="mb-4" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 700, fontSize: 24 }}>New Delivery Record</h2>
+      <div className="grid gap-3">
+        <label className="text-sm"><span className="block text-xs uppercase tracking-widest mb-1" style={{ color: MUTED }}>Order</span>
+          <select value={f.orderId} onChange={(e) => pickOrder(e.target.value)} className="w-full px-3 py-2.5 rounded-sm text-sm" style={inputStyle}>
+            <option value="">— Select order —</option>
+            {orders.map((o) => <option key={o.id} value={o.id}>{o.orderId || ""} · {o.customer} · {o.product}</option>)}
+          </select>
+        </label>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <select value={f.method} onChange={set("method")} className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle}><option value="delivery">Delivery</option><option value="pickup">Pickup</option></select>
+          <select value={f.status} onChange={set("status")} className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle}>{DELIVERY_STATUS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
+        </div>
+        <input value={f.address} onChange={set("address")} placeholder="Delivery address / location" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
+        <div className="grid grid-cols-3 gap-3">
+          <label className="text-xs" style={{ color: MUTED }}>Scheduled<input type="date" value={f.scheduledDate} onChange={set("scheduledDate")} className="w-full px-3 py-2.5 rounded-sm text-sm mt-1" style={inputStyle} /></label>
+          <label className="text-xs" style={{ color: MUTED }}>Courier<input value={f.courier} onChange={set("courier")} placeholder="Name" className="w-full px-3 py-2.5 rounded-sm text-sm mt-1" style={inputStyle} /></label>
+          <label className="text-xs" style={{ color: MUTED }}>Fee (Le)<input type="number" min="0" value={f.fee} onChange={set("fee")} className="w-full px-3 py-2.5 rounded-sm text-sm mt-1" style={inputStyle} /></label>
+        </div>
+        <textarea value={f.note} onChange={set("note")} rows={2} placeholder="Note" className="px-3 py-2.5 rounded-sm text-sm" style={inputStyle} />
+        <div className="flex gap-3"><GoldButton onClick={save}>Save Record</GoldButton><GoldButton outline onClick={done}>Cancel</GoldButton></div>
+      </div>
     </div>
   );
 }
