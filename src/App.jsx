@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { sGet, sSet } from "./lib/store.js";
+import { isSupabase } from "./lib/supabase.js";
+import { signIn, signOut, currentStaff, saveInvoiceRecord, saveReceiptRecord } from "./lib/db.js";
 
 /* ============================================================
    PC WEARS — People's Choice Wears  ·  v2 (Premium)
@@ -133,7 +135,7 @@ function downloadCSV(filename, rows) {
 /* ---------------- helpers ---------------- */
 const fmtLe = (n) => "Le " + Number(n || 0).toLocaleString("en-US");
 const waLink = (msg) => `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`;
-const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const uid = () => (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2, 7));
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const STOCK_LABEL = { available: "Available", sold_out: "Sold Out", coming_soon: "Coming Soon" };
 
@@ -278,16 +280,16 @@ export default function App() {
     (async () => {
       const p = await sGet("pcw2:products", null, true);
       if (p && Array.isArray(p) && p.length) setProducts(p);
-      else { setProducts(SEED_PRODUCTS); sSet("pcw2:products", SEED_PRODUCTS, true); }
+      else if (!isSupabase) { setProducts(SEED_PRODUCTS); sSet("pcw2:products", SEED_PRODUCTS, true); } else { setProducts([]); }
       setOrders(await sGet("pcw2:orders", [], true));
       const bp = await sGet("pcw2:posts", null, true);
       if (bp && Array.isArray(bp) && bp.length) setPosts(bp);
-      else { setPosts(SEED_POSTS); sSet("pcw2:posts", SEED_POSTS, true); }
+      else { setPosts(SEED_POSTS); if (!isSupabase) sSet("pcw2:posts", SEED_POSTS, true); }
       setCustomers(await sGet("pcw2:customers", [], true));
       setFabrics(await sGet("pcw2:fabrics", [], true));
       const tm = await sGet("pcw2:team", null, true);
       if (tm && Array.isArray(tm) && tm.length) setTeam(tm);
-      else { setTeam(SEED_TEAM); sSet("pcw2:team", SEED_TEAM, true); }
+      else { setTeam(SEED_TEAM); if (!isSupabase) sSet("pcw2:team", SEED_TEAM, true); }
       setStaff(await sGet("pcw2:staff", [], true));
       const accs = await sGet("pcw2:accounts", [], true); setAccounts(accs);
       setNotices(await sGet("pcw2:notices", [], true));
@@ -303,6 +305,17 @@ export default function App() {
       setTimeout(() => setLoading(false), 900);
     })();
   }, []);
+
+  // After a staff member signs in, (re)load the records protected by row-level
+  // security so they appear in the dashboard.
+  const reloadSecure = async () => {
+    setOrders(await sGet("pcw2:orders", [], true));
+    setCustomers(await sGet("pcw2:customers", [], true));
+    setFabrics(await sGet("pcw2:fabrics", [], true));
+    setMovements(await sGet("pcw2:movements", [], true));
+    setStaff(await sGet("pcw2:staff", [], true));
+    if (isSupabase) setProducts(await sGet("pcw2:products", [], true));
+  };
 
   const saveProducts = (n) => { setProducts(n); sSet("pcw2:products", n, true); };
   const saveOrders = (n) => { setOrders(n); sSet("pcw2:orders", n, true); };
@@ -345,7 +358,7 @@ export default function App() {
     custom: "Hello PC Wears, I'd like to ask about a custom outfit.",
   }[route.page] || "Hello PC Wears, I'd like to make an inquiry.";
 
-  const pp = { products, saveProducts, orders, saveOrders, posts, savePosts, customers, saveCustomers, team, saveTeam, staff, saveStaff, fabrics, saveFabrics, accounts, saveAccounts, account, loginAccount, notices, saveNotices, pushNotice, investments, saveInvestments, expenses, saveExpenses, movements, saveMovements, role, setRole, staffName, setStaffName, cart, saveCart, wishlist, toggleWish, go, addToCart, cartTotal, showToast, adminPass, setAdminPass, isAdmin, setIsAdmin, setQuickView };
+  const pp = { products, saveProducts, orders, saveOrders, reloadSecure, posts, savePosts, customers, saveCustomers, team, saveTeam, staff, saveStaff, fabrics, saveFabrics, accounts, saveAccounts, account, loginAccount, notices, saveNotices, pushNotice, investments, saveInvestments, expenses, saveExpenses, movements, saveMovements, role, setRole, staffName, setStaffName, cart, saveCart, wishlist, toggleWish, go, addToCart, cartTotal, showToast, adminPass, setAdminPass, isAdmin, setIsAdmin, setQuickView };
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: CREAM, color: INK, fontFamily: "'Jost', sans-serif" }}>
@@ -964,24 +977,51 @@ function ContactPage() {
 }
 
 /* ================= ADMIN ================= */
-function AdminPage(props) { return props.isAdmin ? <AdminDashboard {...props} /> : <AdminLogin {...props} />; }
-function AdminLogin({ adminPass, setIsAdmin, staff, setRole, setStaffName }) {
-  const [pass, setPass] = useState(""); const [err, setErr] = useState("");
-  const tryLogin = () => {
+function AdminPage(props) { return props.isAdmin ? <AdminDashboard {...props} /> : <AdminLogin {...props} onLoggedIn={props.reloadSecure} />; }
+function AdminLogin({ adminPass, setIsAdmin, staff, setRole, setStaffName, onLoggedIn }) {
+  const [email, setEmail] = useState(""); const [pass, setPass] = useState("");
+  const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
+
+  const tryLogin = async () => {
+    setErr("");
+    if (isSupabase) {
+      // Real Supabase Auth — required for the database's row-level security.
+      setBusy(true);
+      try {
+        await signIn(email.trim(), pass);
+        const member = await currentStaff();
+        if (!member || member.active === false) {
+          await signOut();
+          setErr("This account is not an active staff member. Ask the owner to add you in Supabase.");
+        } else {
+          setRole(member.role); setStaffName(member.name); setIsAdmin(true);
+          if (onLoggedIn) onLoggedIn();
+        }
+      } catch (e) {
+        setErr(e.message || "Sign in failed. Check your email and password.");
+      } finally { setBusy(false); }
+      return;
+    }
+    // Local fallback (no Supabase configured) — passcode mode
     if (pass === adminPass) { setRole("owner"); setStaffName("Owner"); setIsAdmin(true); return; }
     const member = (staff || []).find((s) => s.passcode && s.passcode === pass && s.active !== false);
     if (member) { setRole(member.role); setStaffName(member.name); setIsAdmin(true); return; }
     setErr("Incorrect passcode. Try again.");
   };
+
   return (
     <div className="max-w-sm mx-auto px-4 py-20">
       <div className="text-center mb-6"><Crest size={56} /></div>
       <h1 className="text-center mb-2" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 700, fontSize: 28 }}>Staff Login</h1>
-      <p className="text-center text-xs mb-6" style={{ color: MUTED }}>Owner uses the admin password. Staff use the passcode set for them.</p>
-      <input type="password" value={pass} onChange={(e) => { setPass(e.target.value); setErr(""); }} onKeyDown={(e) => e.key === "Enter" && tryLogin()} placeholder="Password or staff passcode" className="w-full px-3 py-3 rounded-sm text-sm mb-3" style={{ background: WHITE, border: `1px solid ${err ? "#C0392B" : CREAM_DARK}` }} />
+      <p className="text-center text-xs mb-6" style={{ color: MUTED }}>{isSupabase ? "Sign in with your staff email and password." : "Owner uses the admin password. Staff use the passcode set for them."}</p>
+      {isSupabase && (
+        <input type="email" value={email} onChange={(e) => { setEmail(e.target.value); setErr(""); }} placeholder="Email" autoComplete="username" className="w-full px-3 py-3 rounded-sm text-sm mb-3" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}` }} />
+      )}
+      <input type="password" value={pass} onChange={(e) => { setPass(e.target.value); setErr(""); }} onKeyDown={(e) => e.key === "Enter" && tryLogin()} placeholder={isSupabase ? "Password" : "Password or staff passcode"} autoComplete="current-password" className="w-full px-3 py-3 rounded-sm text-sm mb-3" style={{ background: WHITE, border: `1px solid ${err ? "#C0392B" : CREAM_DARK}` }} />
       {err && <p className="text-xs mb-3" style={{ color: "#C0392B" }}>{err}</p>}
-      <GoldButton full onClick={tryLogin}>Log In</GoldButton>
-      <p className="text-xs mt-4 text-center" style={{ color: MUTED }}>Default owner password: <code>{DEFAULT_ADMIN_PASS}</code> — change it in Settings after first login.</p>
+      <GoldButton full onClick={tryLogin} disabled={busy}>{busy ? "Signing in…" : "Log In"}</GoldButton>
+      {!isSupabase && <p className="text-xs mt-4 text-center" style={{ color: MUTED }}>Default owner password: <code>{DEFAULT_ADMIN_PASS}</code> — change it in Settings after first login.</p>}
+      {isSupabase && <p className="text-xs mt-4 text-center" style={{ color: MUTED }}>Accounts are managed in Supabase. The owner adds staff under Authentication, then links them in the staff table.</p>}
     </div>
   );
 }
@@ -997,7 +1037,7 @@ function AdminDashboard(props) {
         <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 700, fontSize: 30 }}>PC Wears Dashboard</h1>
         <div className="flex items-center gap-3">
           <span className="text-xs uppercase tracking-widest px-3 py-1 rounded-sm" style={{ background: INK, color: GOLD }}>{staffName} · {(ROLES[role] || {}).label || "Staff"}</span>
-          <GoldButton small outline onClick={() => { props.setIsAdmin(false); props.setRole(null); }}>Log Out</GoldButton>
+          <GoldButton small outline onClick={() => { if (isSupabase) signOut(); props.setIsAdmin(false); props.setRole(null); }}>Log Out</GoldButton>
         </div>
       </div>
       <p className="text-xs mb-5" style={{ color: MUTED }}>Records are saved through the app's data layer. Connect Supabase in <code>src/lib/store.js</code> to make them permanent and shared across all devices.</p>
@@ -1335,6 +1375,9 @@ function InvoiceDoc({ order, customers, kind, onClose }) {
         <div className="w-full max-w-2xl flex flex-wrap gap-2 justify-end mb-3 no-print">
           <GoldButton small onClick={() => window.print()}>Print</GoldButton>
           <GoldButton small outline onClick={() => window.print()}>Download PDF</GoldButton>
+          {isSupabase && (kind === "invoice" || kind === "receipt") && (
+            <GoldButton small outline onClick={async () => { try { if (kind === "invoice") await saveInvoiceRecord(order.id, total); else await saveReceiptRecord(order.id, paid); alert("Saved to records"); } catch (e) { alert("Could not save: " + (e.message || e)); } }}>Save to records</GoldButton>
+          )}
           <GoldButton small outline href={waShare}><WaIcon size={13} color={GOLD} /> Share on WhatsApp</GoldButton>
           <button onClick={onClose} className="px-4 py-2 text-xs rounded-sm uppercase tracking-wider" style={{ background: BLACK, color: CREAM }}>Close</button>
         </div>
