@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { GOLD, GOLD_LIGHT, BLACK, INK, NAVY, CREAM, CREAM_DARK, MUTED, WHITE, VENDOR_TYPES } from "../lib/theme.js";
-import { isSupabase } from "../lib/supabase.js";
-import { vendorApply } from "../lib/marketplace.js";
+import { GOLD, BLACK, INK, NAVY, CREAM, CREAM_DARK, MUTED, WHITE, VENDOR_TYPES } from "../lib/theme.js";
+import { isSupabase, supabase } from "../lib/supabase.js";
 
-/* People's Choice Fashion Marketplace — Vendor registration / application */
+/* People's Choice Fashion Marketplace — Vendor registration / application.
+   Phase 1: submits via the public.submit_vendor_application RPC (SECURITY
+   DEFINER), so no direct table insert and no Supabase Auth/email are needed.
+   Image upload to vendor-logos / vendor-covers is best-effort. */
 export default function VendorRegister({ go }) {
   const [f, setF] = useState({
     businessName: "", ownerName: "", email: "", phone: "", whatsapp: "",
@@ -13,38 +15,68 @@ export default function VendorRegister({ go }) {
   const [coverFile, setCoverFile] = useState(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  const [done, setDone] = useState(null); // "registered" | "confirm_email"
+  const [done, setDone] = useState(false);
 
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const input = { background: WHITE, border: `1px solid ${CREAM_DARK}`, color: INK };
-  const label = { color: MUTED, fontSize: 12, letterSpacing: "0.05em", textTransform: "uppercase" };
+
+  // Best-effort image upload to a public bucket; returns a URL or null.
+  const tryUpload = async (bucket, file) => {
+    if (!file || !supabase) return null;
+    try {
+      const ext = (file.name && file.name.split(".").pop()) || "jpg";
+      const path = `${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from(bucket).upload(path, file, {
+        contentType: file.type || "image/jpeg", upsert: true,
+      });
+      if (error) throw error;
+      return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+    } catch (e) {
+      console.error(`${bucket} upload skipped:`, e.message || e);
+      return null; // allow the application to continue without images
+    }
+  };
 
   const submit = async () => {
     setErr("");
-    if (!isSupabase) { setErr("The marketplace database is not connected yet."); return; }
+    if (!isSupabase || !supabase) { setErr("The marketplace database is not connected yet."); return; }
     if (!f.businessName.trim() || !f.email.trim()) { setErr("Business name and email are required."); return; }
     if (!f.phone.trim()) { setErr("A phone number is required so customers can reach you."); return; }
+
     setBusy(true);
     try {
-      const res = await vendorApply({ ...f, logoFile, coverFile });
-      setDone(res.status);
+      const p_logo_url = await tryUpload("vendor-logos", logoFile);
+      const p_cover_image_url = await tryUpload("vendor-covers", coverFile);
+
+      const { error } = await supabase.rpc("submit_vendor_application", {
+        p_business_name: f.businessName.trim(),
+        p_owner_name: f.ownerName.trim() || null,
+        p_email: f.email.trim(),
+        p_phone: f.phone.trim(),
+        p_whatsapp: f.whatsapp.trim() || null,
+        p_location: f.location.trim() || null,
+        p_business_category: f.businessCategory.trim() || null,
+        p_vendor_type: f.vendorType || "other",
+        p_description: f.description.trim() || null,
+        p_logo_url,
+        p_cover_image_url,
+      });
+      if (error) throw error;
+      setDone(true);
     } catch (e) {
       setErr(e.message || "Something went wrong. Please try again.");
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
   };
 
   if (done) {
-    const confirming = done === "confirm_email";
     return (
       <div className="max-w-lg mx-auto px-4 py-20 text-center">
         <div className="mx-auto mb-5 flex items-center justify-center" style={{ width: 64, height: 64, borderRadius: 999, background: GOLD, color: BLACK, fontSize: 30 }}>✓</div>
-        <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 700, fontSize: 30, color: INK }}>
-          {confirming ? "Almost there — confirm your email" : "Application received!"}
-        </h1>
+        <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 700, fontSize: 30, color: INK }}>Application submitted</h1>
         <p className="mt-3 text-sm" style={{ color: MUTED }}>
-          {confirming
-            ? "We've sent a confirmation link to your email. Please confirm it, then log in to finish setting up your shop."
-            : "Thank you for applying to sell on People's Choice. Our team will review your application and approve your shop shortly. You'll be able to log in and add products once you're approved."}
+          Application submitted successfully. Your shop will go live after PC Wears approves it.
         </p>
         <button onClick={() => go("home")} className="mt-7 px-6 py-3 rounded-sm text-sm font-medium" style={{ background: GOLD, color: BLACK }}>
           Back to Home
@@ -55,7 +87,6 @@ export default function VendorRegister({ go }) {
 
   return (
     <div>
-      {/* hero */}
       <section style={{ background: `radial-gradient(ellipse at 70% 10%, ${NAVY} 0%, transparent 55%), ${BLACK}` }}>
         <div className="max-w-3xl mx-auto px-4 py-14 text-center">
           <p className="text-xs uppercase tracking-[0.35em]" style={{ color: GOLD }}>Sell on People's Choice</p>

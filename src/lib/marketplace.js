@@ -153,3 +153,186 @@ export async function vendorRegister(form) {
 
   return { status: "registered", vendor };
 }
+
+/* ============================================================
+   PHASE 1 (rest) — vendor auth linking, vendor CRUD,
+   public marketplace queries, and admin management.
+   ============================================================ */
+
+/* ---------- vendor authentication / linking ---------- */
+// After a vendor signs up or signs in, link their Auth user to their
+// pending vendor row (matched by email) via the claim_vendor RPC.
+export async function claimVendor(email) {
+  ensureSupabase();
+  const { data, error } = await supabase.rpc("claim_vendor", { p_email: (email || "").trim() });
+  if (error) throw error;
+  return data || null;
+}
+export async function vendorSignIn(email, password) {
+  ensureSupabase();
+  const { error } = await supabase.auth.signInWithPassword({ email: (email || "").trim(), password });
+  if (error) throw error;
+  let v = await currentVendor();
+  if (!v) { try { v = await claimVendor(email); } catch (e) { /* none to claim */ } }
+  return v;
+}
+export async function vendorCreateLogin(email, password) {
+  ensureSupabase();
+  const { data, error } = await supabase.auth.signUp({
+    email: (email || "").trim(), password,
+    options: { data: { role: "vendor" } },
+  });
+  if (error) throw error;
+  if (!data.session) return { status: "confirm_email" };
+  const v = await claimVendor(email);
+  return { status: "ok", vendor: v };
+}
+export async function vendorSignOut() { if (supabase) await supabase.auth.signOut(); }
+
+/* ---------- vendor dashboard: profile ---------- */
+export async function vendorUpdateProfile(vendorId, patch, files = {}) {
+  ensureSupabase();
+  const up = { ...patch };
+  try { if (files.logoFile) up.logo_url = await uploadVendorImage("vendor-logos", files.logoFile); } catch (e) { console.error(e); }
+  try { if (files.coverFile) up.cover_image_url = await uploadVendorImage("vendor-covers", files.coverFile); } catch (e) { console.error(e); }
+  // never allow self-elevation
+  delete up.status; delete up.is_verified; delete up.subscription_plan; delete up.subscription_status; delete up.product_limit; delete up.auth_user_id;
+  const { data, error } = await supabase.from("vendors").update(up).eq("id", vendorId).select().maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+/* ---------- vendor products ---------- */
+export async function vendorListProducts(vendorId) {
+  ensureSupabase();
+  const { data, error } = await supabase.from("vendor_products").select("*").eq("vendor_id", vendorId).order("created_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+const csv = (s) => (s || "").split(",").map((x) => x.trim()).filter(Boolean);
+export async function vendorSaveProduct(vendorId, p, files = []) {
+  ensureSupabase();
+  let images = p.images || [];
+  for (const file of (files || [])) { try { const u = await uploadVendorImage("vendor-products", file); if (u) images.push(u); } catch (e) { console.error(e); } }
+  const row = {
+    vendor_id: vendorId, name: p.name, slug: slugify(p.name) + "-" + Math.random().toString(36).slice(2, 5),
+    description: p.description || null, category: p.category || null, subcategory: p.subcategory || null,
+    price: Number(p.price) || 0, currency: p.currency || "SLE",
+    stock_quantity: Number(p.stock_quantity) || 0, stock_status: p.stock_status || "available",
+    images, sizes: Array.isArray(p.sizes) ? p.sizes : csv(p.sizes), colors: Array.isArray(p.colors) ? p.colors : csv(p.colors),
+    material: p.material || null, location: p.location || null,
+    is_featured: !!p.is_featured, status: p.status || "active",
+  };
+  if (p.id) { const { error } = await supabase.from("vendor_products").update(row).eq("id", p.id); if (error) throw error; }
+  else { const { error } = await supabase.from("vendor_products").insert(row); if (error) throw error; }
+}
+export async function vendorDeleteProduct(id) { ensureSupabase(); const { error } = await supabase.from("vendor_products").delete().eq("id", id); if (error) throw error; }
+
+/* ---------- fabric products ---------- */
+export async function vendorListFabrics(vendorId) {
+  ensureSupabase();
+  const { data, error } = await supabase.from("fabric_products").select("*").eq("vendor_id", vendorId).order("created_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+export async function vendorSaveFabric(vendorId, p, files = []) {
+  ensureSupabase();
+  let images = p.images || [];
+  for (const file of (files || [])) { try { const u = await uploadVendorImage("fabric-products", file); if (u) images.push(u); } catch (e) { console.error(e); } }
+  const row = {
+    vendor_id: vendorId, fabric_name: p.fabric_name, slug: slugify(p.fabric_name) + "-" + Math.random().toString(36).slice(2, 5),
+    fabric_type: p.fabric_type || null, color: p.color || null, pattern: p.pattern || null, material: p.material || null,
+    price_per_yard: p.price_per_yard ? Number(p.price_per_yard) : null,
+    price_per_meter: p.price_per_meter ? Number(p.price_per_meter) : null,
+    available_yards: Number(p.available_yards) || 0, available_meters: Number(p.available_meters) || 0,
+    minimum_order_quantity: Number(p.minimum_order_quantity) || 1, fabric_width: p.fabric_width || null,
+    bulk_price: p.bulk_price ? Number(p.bulk_price) : null, wholesale_price: p.wholesale_price ? Number(p.wholesale_price) : null,
+    retail_price: p.retail_price ? Number(p.retail_price) : null, delivery_option: p.delivery_option || null,
+    pickup_location: p.pickup_location || null, images, stock_status: p.stock_status || "available", status: p.status || "active",
+  };
+  if (p.id) { const { error } = await supabase.from("fabric_products").update(row).eq("id", p.id); if (error) throw error; }
+  else { const { error } = await supabase.from("fabric_products").insert(row); if (error) throw error; }
+}
+export async function vendorDeleteFabric(id) { ensureSupabase(); const { error } = await supabase.from("fabric_products").delete().eq("id", id); if (error) throw error; }
+
+/* ---------- inquiries / requests ---------- */
+export async function vendorListInquiries(vendorId) {
+  ensureSupabase();
+  const { data, error } = await supabase.from("vendor_inquiries").select("*").eq("vendor_id", vendorId).order("created_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+export async function submitInquiry(row) {
+  ensureSupabase();
+  const { error } = await supabase.from("vendor_inquiries").insert(row);
+  if (error) throw error;
+}
+export async function vendorRequestVerification(vendorId) {
+  return submitInquiry({ vendor_id: vendorId, message: "Verification request from vendor", inquiry_type: "form" });
+}
+export async function vendorRequestPromotion(vendorId, promotion_type) {
+  ensureSupabase();
+  const { error } = await supabase.from("vendor_promotions").insert({ vendor_id: vendorId, promotion_type, status: "requested" });
+  if (error) throw error;
+}
+export async function vendorRequestSubscription(vendorId, plan_name, amount) {
+  ensureSupabase();
+  const { error } = await supabase.from("vendor_subscriptions").insert({ vendor_id: vendorId, plan_name, amount: Number(amount) || 0, status: "unpaid" });
+  if (error) throw error;
+}
+export async function vendorListSubscriptions(vendorId) {
+  ensureSupabase();
+  const { data, error } = await supabase.from("vendor_subscriptions").select("*").eq("vendor_id", vendorId).order("created_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+/* ---------- public marketplace queries ---------- */
+export async function listMarketplaceProducts({ search = "", category = "" } = {}) {
+  ensureSupabase();
+  let q = supabase.from("vendor_products")
+    .select("*, vendor:vendors!inner(business_name,slug,is_verified,whatsapp,phone,status)")
+    .eq("status", "active").eq("vendor.status", "approved")
+    .order("is_featured", { ascending: false }).order("created_at", { ascending: false });
+  if (search) q = q.ilike("name", `%${search}%`);
+  if (category) q = q.eq("category", category);
+  const { data, error } = await q;
+  if (error) throw error;
+  return data;
+}
+export async function listMarketplaceVendors() {
+  ensureSupabase();
+  const { data, error } = await supabase.from("vendors").select("*").eq("status", "approved").order("is_verified", { ascending: false }).order("business_name");
+  if (error) throw error;
+  return data;
+}
+export async function getVendorBySlug(slug) {
+  ensureSupabase();
+  const { data: vendor } = await supabase.from("vendors").select("*").eq("slug", slug).eq("status", "approved").maybeSingle();
+  if (!vendor) return null;
+  const { data: products } = await supabase.from("vendor_products").select("*").eq("vendor_id", vendor.id).eq("status", "active").order("created_at", { ascending: false });
+  const { data: fabrics } = await supabase.from("fabric_products").select("*").eq("vendor_id", vendor.id).eq("status", "active").order("created_at", { ascending: false });
+  return { vendor, products: products || [], fabrics: fabrics || [] };
+}
+export async function listFabrics({ search = "", fabricType = "" } = {}) {
+  ensureSupabase();
+  let q = supabase.from("fabric_products")
+    .select("*, vendor:vendors!inner(business_name,slug,is_verified,whatsapp,phone,status,location)")
+    .eq("status", "active").eq("vendor.status", "approved").order("created_at", { ascending: false });
+  if (search) q = q.ilike("fabric_name", `%${search}%`);
+  if (fabricType) q = q.eq("fabric_type", fabricType);
+  const { data, error } = await q;
+  if (error) throw error;
+  return data;
+}
+
+/* ---------- admin (uses is_staff full access) ---------- */
+export async function admListVendors() { ensureSupabase(); const { data, error } = await supabase.from("vendors").select("*").order("created_at", { ascending: false }); if (error) throw error; return data; }
+export async function admSetVendor(id, patch) { ensureSupabase(); const { error } = await supabase.from("vendors").update(patch).eq("id", id); if (error) throw error; }
+export async function admListProducts() { ensureSupabase(); const { data, error } = await supabase.from("vendor_products").select("*, vendor:vendors(business_name)").order("created_at", { ascending: false }); if (error) throw error; return data; }
+export async function admSetProduct(id, patch) { ensureSupabase(); const { error } = await supabase.from("vendor_products").update(patch).eq("id", id); if (error) throw error; }
+export async function admDeleteProduct(id) { ensureSupabase(); const { error } = await supabase.from("vendor_products").delete().eq("id", id); if (error) throw error; }
+export async function admListSubscriptions() { ensureSupabase(); const { data, error } = await supabase.from("vendor_subscriptions").select("*, vendor:vendors(business_name)").order("created_at", { ascending: false }); if (error) throw error; return data; }
+export async function admSetSubscription(id, patch) { ensureSupabase(); const { error } = await supabase.from("vendor_subscriptions").update(patch).eq("id", id); if (error) throw error; }
+export async function admListPromotions() { ensureSupabase(); const { data, error } = await supabase.from("vendor_promotions").select("*, vendor:vendors(business_name)").order("created_at", { ascending: false }); if (error) throw error; return data; }
+export async function admSetPromotion(id, patch) { ensureSupabase(); const { error } = await supabase.from("vendor_promotions").update(patch).eq("id", id); if (error) throw error; }

@@ -1,8 +1,13 @@
 import { useState, useEffect, useMemo } from "react";
 import { sGet, sSet } from "./lib/store.js";
 import { isSupabase } from "./lib/supabase.js";
-import { applySeo, PATHS, PAGE_BY_PATH } from "./lib/seo.js";
+import { applySeo, PATHS, PAGE_BY_PATH, resolvePath, pathFor } from "./lib/seo.js";
 import VendorRegister from "./marketplace/VendorRegister.jsx";
+import VendorLogin from "./marketplace/VendorLogin.jsx";
+import VendorDashboard from "./marketplace/VendorDashboard.jsx";
+import AdminMarketplace from "./marketplace/AdminMarketplace.jsx";
+import { MarketplacePage, VendorsPage, VendorProfilePage, FabricsPage, VendorPlansPage, SellOnPage } from "./marketplace/MarketplacePages.jsx";
+import { currentVendor } from "./lib/marketplace.js";
 import { signIn, signOut, currentStaff, saveInvoiceRecord, saveReceiptRecord, customerSignUp, customerSignIn, customerSignOut, currentCustomer, customerOrders } from "./lib/db.js";
 
 /* ============================================================
@@ -97,13 +102,13 @@ const SEED_TEAM = [
 ];
 
 const ROLES = {
-  owner:   { label: "Owner / Admin", tabs: ["dashboard","customers","orders","delivery","products","inventory","investments","expenses","reports","team","blog","staff","settings"] },
-  manager: { label: "Manager",       tabs: ["dashboard","customers","orders","delivery","products","inventory","investments","expenses","reports","team","blog"] },
+  owner:   { label: "Owner / Admin", tabs: ["dashboard","customers","orders","delivery","products","inventory","marketplace","investments","expenses","reports","team","blog","staff","settings"] },
+  manager: { label: "Manager",       tabs: ["dashboard","customers","orders","delivery","products","inventory","marketplace","investments","expenses","reports","team","blog"] },
   sales:   { label: "Sales Staff",   tabs: ["dashboard","customers","orders","delivery","expenses"] },
   tailor:  { label: "Tailor / Production", tabs: ["dashboard","orders","delivery"] },
   viewer:  { label: "Viewer",        tabs: ["dashboard","customers","orders"] },
 };
-const TAB_LABELS = { dashboard:"Dashboard", customers:"Customers", orders:"Orders", delivery:"Delivery", products:"Products", inventory:"Inventory", investments:"Investments", expenses:"Expenses", reports:"Reports", team:"Team", blog:"Blog", staff:"Staff", settings:"Settings" };
+const TAB_LABELS = { dashboard:"Dashboard", customers:"Customers", orders:"Orders", delivery:"Delivery", products:"Products", inventory:"Inventory", marketplace:"Marketplace", investments:"Investments", expenses:"Expenses", reports:"Reports", team:"Team", blog:"Blog", staff:"Staff", settings:"Settings" };
 const EXPENSE_CATS = ["Fabric & Materials","Stock Purchase","Rent","Utilities","Salaries","Transport/Delivery","Marketing","Equipment","Other"];
 
 const MEN_MEASURE = ["Shoulder","Chest","Waist","Hip","Sleeve length","Top length","Trouser waist","Trouser length","Thigh","Neck","Cap size"];
@@ -252,7 +257,12 @@ function SectionTitle({ eyebrow, title, dark, action }) {
 
 /* ================= APP ================= */
 export default function App() {
-  const [route, setRoute] = useState(() => ({ page: (typeof window !== "undefined" && PAGE_BY_PATH[window.location.pathname]) || "home", productId: null }));
+  const [route, setRoute] = useState(() => {
+    if (typeof window === "undefined") return { page: "home", productId: null };
+    const r = resolvePath(window.location.pathname);
+    return { page: r.page, productId: r.slug };
+  });
+  const [vendor, setVendor] = useState(null);
   const [posts, setPosts] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [team, setTeam] = useState([]);
@@ -348,15 +358,21 @@ export default function App() {
 
   const go = (page, productId = null) => {
     setRoute({ page, productId }); setMenuOpen(false); setQuickView(null); window.scrollTo({ top: 0 });
-    try { const path = PATHS[page] || "/"; if (window.location.pathname !== path) window.history.pushState({ page }, "", path); } catch (e) {}
+    try { const path = pathFor(page, productId); if (window.location.pathname !== path) window.history.pushState({ page }, "", path); } catch (e) {}
   };
   const showToast = (m) => { setToast(m); setTimeout(() => setToast(null), 2200); };
+
+  // Restore a signed-in vendor session (Supabase) on load.
+  useEffect(() => {
+    if (!isSupabase) return;
+    currentVendor().then((v) => { if (v) setVendor(v); }).catch(() => {});
+  }, []);
 
   // Update page <title>/meta on every route change (SPA SEO).
   useEffect(() => { try { applySeo(route.page); } catch (e) {} }, [route.page]);
   // Handle browser back/forward by mapping the URL path back to a page.
   useEffect(() => {
-    const onPop = () => setRoute({ page: PAGE_BY_PATH[window.location.pathname] || "home", productId: null });
+    const onPop = () => { const r = resolvePath(window.location.pathname); setRoute({ page: r.page, productId: r.slug }); };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
@@ -411,7 +427,7 @@ export default function App() {
             </span>
           </button>
           <nav className="hidden md:flex items-center gap-6 text-sm uppercase tracking-wider">
-            {[["home", "Home"], ["shop", "Shop"], ["cosmetics", "Cosmetics"], ["invest", "Partner"], ["stylist", "Style AI"], ["blog", "Blog"], ["team", "Team"], ["custom", "Custom Order"], ["about", "About"], ["contact", "Contact"]].map(([k, l]) => (
+            {[["home", "Home"], ["shop", "Shop"], ["marketplace", "Marketplace"], ["fabrics", "Fabrics"], ["cosmetics", "Cosmetics"], ["invest", "Partner"], ["stylist", "Style AI"], ["blog", "Blog"], ["team", "Team"], ["custom", "Custom Order"], ["sellOn", "Sell on PC"], ["about", "About"], ["contact", "Contact"]].map(([k, l]) => (
               <button key={k} onClick={() => go(k)} style={{ color: route.page === k ? GOLD : CREAM }} className="hover:opacity-80">{l}</button>
             ))}
           </nav>
@@ -434,7 +450,7 @@ export default function App() {
         </div>
         {menuOpen && (
           <nav className="md:hidden flex flex-col px-4 pb-4 gap-1 text-sm uppercase tracking-wider" style={{ background: BLACK }}>
-            {[["home", "Home"], ["shop", "Shop"], ["cosmetics", "Cosmetics"], ["invest", "Partner"], ["stylist", "Style AI"], ["blog", "Blog"], ["team", "Team"], ["account", "My Account"], ["wishlist", "Wishlist"], ["custom", "Custom Order"], ["about", "About"], ["contact", "Contact"], ["admin", "Admin"]].map(([k, l]) => (
+            {[["home", "Home"], ["shop", "Shop"], ["marketplace", "Marketplace"], ["fabrics", "Fabrics"], ["cosmetics", "Cosmetics"], ["invest", "Partner"], ["stylist", "Style AI"], ["blog", "Blog"], ["team", "Team"], ["account", "My Account"], ["wishlist", "Wishlist"], ["custom", "Custom Order"], ["sellOn", "Sell on PC"], ["vendorLogin", "Vendor Login"], ["about", "About"], ["contact", "Contact"], ["admin", "Admin"]].map(([k, l]) => (
               <button key={k} onClick={() => go(k)} className="text-left py-2.5 border-b" style={{ color: route.page === k ? GOLD : CREAM, borderColor: `${GOLD}22` }}>{l}</button>
             ))}
             <div className="pt-3"><SocialRow color={CREAM} /></div>
@@ -461,6 +477,14 @@ export default function App() {
         {route.page === "about" && <AboutPage go={go} />}
         {route.page === "contact" && <ContactPage />}
         {route.page === "vendorRegister" && <VendorRegister {...pp} />}
+        {route.page === "marketplace" && <MarketplacePage go={go} />}
+        {route.page === "vendors" && <VendorsPage go={go} />}
+        {route.page === "vendorShop" && <VendorProfilePage slug={route.productId} go={go} />}
+        {route.page === "fabrics" && <FabricsPage go={go} />}
+        {route.page === "vendorPlans" && <VendorPlansPage go={go} />}
+        {route.page === "sellOn" && <SellOnPage go={go} />}
+        {route.page === "vendorLogin" && <VendorLogin go={go} setVendor={setVendor} />}
+        {route.page === "vendorDashboard" && <VendorDashboard go={go} vendor={vendor} setVendor={setVendor} />}
         {route.page === "admin" && <AdminPage {...pp} />}
       </main>
 
@@ -1071,6 +1095,7 @@ function AdminDashboard(props) {
       {tab === "customers" && <AdminCustomers {...props} readOnly={readOnly} />}
       {tab === "orders" && <AdminOrders {...props} readOnly={readOnly} />}
       {tab === "delivery" && <AdminDelivery {...props} readOnly={readOnly} />}
+      {tab === "marketplace" && <AdminMarketplace />}
       {tab === "products" && <AdminProducts {...props} />}
       {tab === "inventory" && <AdminInventory {...props} />}
       {tab === "investments" && <AdminInvestments {...props} />}

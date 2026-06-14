@@ -16,6 +16,10 @@ export const PATHS = {
   custom: "/custom-order", about: "/about", contact: "/contact", blog: "/blog",
   stylist: "/style-advisor", invest: "/partner",
   vendorRegister: "/vendor-register",
+  marketplace: "/marketplace", vendors: "/vendors", fabrics: "/fabrics",
+  vendorPlans: "/pricing/vendor-plans", sellOn: "/sell-on-pcwears",
+  vendorLogin: "/vendor-login", vendorDashboard: "/vendor-dashboard",
+  vendorShop: "/vendors",
   cart: "/cart", wishlist: "/wishlist", account: "/account",
   product: "/product", post: "/blog", admin: "/admin",
 };
@@ -24,12 +28,28 @@ export const PAGE_BY_PATH = {
   "/custom-order": "custom", "/about": "about", "/contact": "contact", "/blog": "blog",
   "/style-advisor": "stylist", "/partner": "invest",
   "/vendor-register": "vendorRegister",
+  "/marketplace": "marketplace", "/vendors": "vendors", "/fabrics": "fabrics",
+  "/pricing/vendor-plans": "vendorPlans", "/sell-on-pcwears": "sellOn",
+  "/vendor-login": "vendorLogin", "/vendor-dashboard": "vendorDashboard",
   "/cart": "cart", "/wishlist": "wishlist", "/account": "account",
   "/product": "product", "/admin": "admin",
 };
 
 /* pages we do NOT want Google to index */
-const NOINDEX = new Set(["admin", "account", "cart", "wishlist"]);
+const NOINDEX = new Set(["admin", "account", "cart", "wishlist", "vendorDashboard", "vendorLogin"]);
+
+/* Resolve a URL path to a page (handles the dynamic /vendor/:slug). */
+export function resolvePath(pathname) {
+  if (pathname && pathname.startsWith("/vendor/")) {
+    return { page: "vendorShop", slug: decodeURIComponent(pathname.slice("/vendor/".length)) };
+  }
+  return { page: PAGE_BY_PATH[pathname] || "home", slug: null };
+}
+/* Build a URL for a page (handles the dynamic vendor shop). */
+export function pathFor(page, param) {
+  if (page === "vendorShop" && param) return "/vendor/" + param;
+  return PATHS[page] || "/";
+}
 
 const META = {
   home: {
@@ -73,6 +93,14 @@ const META = {
     desc: "Register your interest in partnering with PC Wears, a growing fashion business in Freetown, Sierra Leone.",
   },
   vendorRegister: { title: `Sell on People${"\u2019"}s Choice | Open Your Shop`, desc: "Register your fashion business on the People's Choice Fashion Marketplace. Clothing brands, boutiques, tailors, designers and fabric stores can sell to customers across Freetown and Sierra Leone." },
+  marketplace: { title: `Marketplace | People${"\u2019"}s Choice Fashion`, desc: "Shop fashion from PC Wears and trusted vendors across Freetown and Sierra Leone — clothing, Africana wear, shoes, perfumes, watches, accessories and more." },
+  vendors: { title: `Our Vendors | People${"\u2019"}s Choice Fashion Marketplace`, desc: "Browse approved fashion vendors, boutiques, tailors and fabric stores on the People's Choice Fashion Marketplace." },
+  fabrics: { title: `Fabrics & Tailoring Materials | People${"\u2019"}s Choice`, desc: "Buy fabrics by the yard or meter from fabric stores in Sierra Leone, and request custom tailoring with your chosen fabric." },
+  vendorPlans: { title: `Vendor Plans & Pricing | People${"\u2019"}s Choice`, desc: "Choose a vendor plan to sell your fashion products on the People's Choice Fashion Marketplace. Free trial, Starter, Business and Premium plans." },
+  sellOn: { title: `Sell on People${"\u2019"}s Choice | Grow Your Fashion Brand`, desc: "Reach more customers across Freetown and Sierra Leone. Clothing brands, boutiques, tailors, designers and fabric stores can sell on People's Choice." },
+  vendorLogin: { title: `Vendor Login | People${"\u2019"}s Choice`, desc: "Vendor portal login for People's Choice Fashion Marketplace." },
+  vendorDashboard: { title: `Vendor Dashboard | People${"\u2019"}s Choice`, desc: "" },
+  vendorShop: { title: `Vendor Shop | People${"\u2019"}s Choice Fashion`, desc: "Shop this vendor's products on the People's Choice Fashion Marketplace." },
   account: { title: `My Account | ${BRAND}`, desc: "Sign in to your PC Wears account to track orders and get new-stock alerts." },
   cart: { title: `Your Cart | ${BRAND}`, desc: "Review your PC Wears cart and check out on WhatsApp." },
   wishlist: { title: `Your Wishlist | ${BRAND}`, desc: "Your saved PC Wears favourites." },
