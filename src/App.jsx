@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { sGet, sSet } from "./lib/store.js";
 import { isSupabase } from "./lib/supabase.js";
+import { applySeo, PATHS, PAGE_BY_PATH } from "./lib/seo.js";
 import { signIn, signOut, currentStaff, saveInvoiceRecord, saveReceiptRecord, customerSignUp, customerSignIn, customerSignOut, currentCustomer, customerOrders } from "./lib/db.js";
 
 /* ============================================================
@@ -250,7 +251,7 @@ function SectionTitle({ eyebrow, title, dark, action }) {
 
 /* ================= APP ================= */
 export default function App() {
-  const [route, setRoute] = useState({ page: "home", productId: null });
+  const [route, setRoute] = useState(() => ({ page: (typeof window !== "undefined" && PAGE_BY_PATH[window.location.pathname]) || "home", productId: null }));
   const [posts, setPosts] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [team, setTeam] = useState([]);
@@ -344,8 +345,20 @@ export default function App() {
   const loginAccount = (a) => { setAccount(a); sSet("pcw2:session", a ? a.id : null, false); };
   const pushNotice = (text, type = "info") => { const n = [{ id: uid(), text, type, date: todayISO() }, ...notices].slice(0, 50); setNotices(n); sSet("pcw2:notices", n, true); };
 
-  const go = (page, productId = null) => { setRoute({ page, productId }); setMenuOpen(false); setQuickView(null); window.scrollTo({ top: 0 }); };
+  const go = (page, productId = null) => {
+    setRoute({ page, productId }); setMenuOpen(false); setQuickView(null); window.scrollTo({ top: 0 });
+    try { const path = PATHS[page] || "/"; if (window.location.pathname !== path) window.history.pushState({ page }, "", path); } catch (e) {}
+  };
   const showToast = (m) => { setToast(m); setTimeout(() => setToast(null), 2200); };
+
+  // Update page <title>/meta on every route change (SPA SEO).
+  useEffect(() => { try { applySeo(route.page); } catch (e) {} }, [route.page]);
+  // Handle browser back/forward by mapping the URL path back to a page.
+  useEffect(() => {
+    const onPop = () => setRoute({ page: PAGE_BY_PATH[window.location.pathname] || "home", productId: null });
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   const addToCart = (product, qty = 1, size = "", color = "") => {
     const key = product.id + "|" + size + "|" + color;

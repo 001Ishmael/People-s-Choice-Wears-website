@@ -241,3 +241,18 @@ private records. The dashboard login now uses Supabase email/password. To give s
 - Please test each area (add a product, customer, order, payment, upload an image) against your
   live project and check the Supabase Table Editor to confirm rows appear.
 
+## SEO
+
+- Per-page `<title>`, meta description, canonical, Open Graph and Twitter/X tags update on
+  every route (see `src/lib/seo.js`). Real URLs are used (`/shop`, `/cosmetics`, `/custom-order`,
+  `/team`, `/about`, `/contact`, `/blog`) and the address bar + browser back/forward work.
+- `index.html` carries the default tags and JSON-LD structured data (`ClothingStore`,
+  Freetown / Sierra Leone, phone, hours, social profiles).
+- `public/robots.txt` allows crawling and disallows `/admin`, `/account`, `/cart`, `/wishlist`.
+- `public/sitemap.xml` lists the public pages.
+- Admin, account, cart and wishlist pages emit `noindex` so Google won't list them.
+
+**To do:** add a share image at `public/og-image.jpg` (1200x630) — the Open Graph/Twitter tags
+point to `https://www.pcwears.com/og-image.jpg`. After deploying, submit the sitemap in Google
+Search Console (https://search.google.com/search-console) for `https://www.pcwears.com/`.
+
