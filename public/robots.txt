@@ -1,11 +1,9 @@
-# PC Wears — robots.txt
 User-agent: *
 Allow: /
 
-# Keep private / app-only areas out of search results
+Disallow: /dashboard
 Disallow: /admin
-Disallow: /account
-Disallow: /cart
-Disallow: /wishlist
+Disallow: /staff-login
+Disallow: /settings
 
 Sitemap: https://www.pcwears.com/sitemap.xml
