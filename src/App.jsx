@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { sGet, sSet } from "./lib/store.js";
 import { isSupabase } from "./lib/supabase.js";
 import { applySeo, PATHS, PAGE_BY_PATH } from "./lib/seo.js";
+import VendorRegister from "./marketplace/VendorRegister.jsx";
 import { signIn, signOut, currentStaff, saveInvoiceRecord, saveReceiptRecord, customerSignUp, customerSignIn, customerSignOut, currentCustomer, customerOrders } from "./lib/db.js";
 
 /* ============================================================
@@ -459,6 +460,7 @@ export default function App() {
         {route.page === "custom" && <CustomOrderPage {...pp} />}
         {route.page === "about" && <AboutPage go={go} />}
         {route.page === "contact" && <ContactPage />}
+        {route.page === "vendorRegister" && <VendorRegister {...pp} />}
         {route.page === "admin" && <AdminPage {...pp} />}
       </main>
 

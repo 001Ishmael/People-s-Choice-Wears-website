@@ -15,6 +15,7 @@ export const PATHS = {
   home: "/", shop: "/shop", cosmetics: "/cosmetics", team: "/team",
   custom: "/custom-order", about: "/about", contact: "/contact", blog: "/blog",
   stylist: "/style-advisor", invest: "/partner",
+  vendorRegister: "/vendor-register",
   cart: "/cart", wishlist: "/wishlist", account: "/account",
   product: "/product", post: "/blog", admin: "/admin",
 };
@@ -22,6 +23,7 @@ export const PAGE_BY_PATH = {
   "/": "home", "/shop": "shop", "/cosmetics": "cosmetics", "/team": "team",
   "/custom-order": "custom", "/about": "about", "/contact": "contact", "/blog": "blog",
   "/style-advisor": "stylist", "/partner": "invest",
+  "/vendor-register": "vendorRegister",
   "/cart": "cart", "/wishlist": "wishlist", "/account": "account",
   "/product": "product", "/admin": "admin",
 };
@@ -70,6 +72,7 @@ const META = {
     title: `Partner With ${BRAND}`,
     desc: "Register your interest in partnering with PC Wears, a growing fashion business in Freetown, Sierra Leone.",
   },
+  vendorRegister: { title: `Sell on People${"\u2019"}s Choice | Open Your Shop`, desc: "Register your fashion business on the People's Choice Fashion Marketplace. Clothing brands, boutiques, tailors, designers and fabric stores can sell to customers across Freetown and Sierra Leone." },
   account: { title: `My Account | ${BRAND}`, desc: "Sign in to your PC Wears account to track orders and get new-stock alerts." },
   cart: { title: `Your Cart | ${BRAND}`, desc: "Review your PC Wears cart and check out on WhatsApp." },
   wishlist: { title: `Your Wishlist | ${BRAND}`, desc: "Your saved PC Wears favourites." },
