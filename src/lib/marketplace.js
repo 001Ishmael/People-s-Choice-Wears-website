@@ -37,6 +37,51 @@ export async function currentVendor() {
 }
 
 /*
+  Phase 1 (no Auth yet): save a vendor APPLICATION directly.
+  Inserts a vendors row with status 'pending' and auth_user_id null.
+  Image upload is best-effort — if it fails (e.g. storage not open to the
+  public), the application still saves and the logo can be added later.
+*/
+export async function vendorApply(form) {
+  ensureSupabase();
+
+  let logo_url = null, cover_image_url = null;
+  try { if (form.logoFile) logo_url = await uploadVendorImage("vendor-logos", form.logoFile); }
+  catch (e) { console.error("logo upload skipped:", e.message || e); }
+  try { if (form.coverFile) cover_image_url = await uploadVendorImage("vendor-covers", form.coverFile); }
+  catch (e) { console.error("cover upload skipped:", e.message || e); }
+
+  const base = slugify(form.businessName) || "vendor";
+  const slug = `${base}-${Math.random().toString(36).slice(2, 6)}`;
+
+  const { data, error } = await supabase
+    .from("vendors")
+    .insert({
+      auth_user_id: null,
+      business_name: form.businessName,
+      slug,
+      owner_name: form.ownerName || null,
+      email: (form.email || "").trim() || null,
+      phone: form.phone || null,
+      whatsapp: form.whatsapp || null,
+      location: form.location || null,
+      business_category: form.businessCategory || null,
+      vendor_type: form.vendorType || "other",
+      description: form.description || null,
+      logo_url,
+      cover_image_url,
+      status: "pending",
+      subscription_plan: "trial",
+      subscription_status: "trial",
+      product_limit: 5,
+    })
+    .select()
+    .maybeSingle();
+  if (error) throw error;
+  return { status: "registered", vendor: data };
+}
+
+/*
   Register a new vendor.
   form = {
     businessName, ownerName, email, password, phone, whatsapp,

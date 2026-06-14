@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { GOLD, GOLD_LIGHT, BLACK, INK, NAVY, CREAM, CREAM_DARK, MUTED, WHITE, VENDOR_TYPES } from "../lib/theme.js";
 import { isSupabase } from "../lib/supabase.js";
-import { vendorRegister } from "../lib/marketplace.js";
+import { vendorApply } from "../lib/marketplace.js";
 
 /* People's Choice Fashion Marketplace — Vendor registration / application */
 export default function VendorRegister({ go }) {
   const [f, setF] = useState({
-    businessName: "", ownerName: "", email: "", password: "", phone: "", whatsapp: "",
+    businessName: "", ownerName: "", email: "", phone: "", whatsapp: "",
     location: "", businessCategory: "", vendorType: "clothing_brand", description: "",
   });
   const [logoFile, setLogoFile] = useState(null);
@@ -22,12 +22,11 @@ export default function VendorRegister({ go }) {
   const submit = async () => {
     setErr("");
     if (!isSupabase) { setErr("The marketplace database is not connected yet."); return; }
-    if (!f.businessName.trim() || !f.email.trim() || !f.password) { setErr("Business name, email and password are required."); return; }
-    if (f.password.length < 6) { setErr("Password must be at least 6 characters."); return; }
+    if (!f.businessName.trim() || !f.email.trim()) { setErr("Business name and email are required."); return; }
     if (!f.phone.trim()) { setErr("A phone number is required so customers can reach you."); return; }
     setBusy(true);
     try {
-      const res = await vendorRegister({ ...f, logoFile, coverFile });
+      const res = await vendorApply({ ...f, logoFile, coverFile });
       setDone(res.status);
     } catch (e) {
       setErr(e.message || "Something went wrong. Please try again.");
@@ -79,10 +78,7 @@ export default function VendorRegister({ go }) {
             <Field label="Owner / contact name"><input value={f.ownerName} onChange={set("ownerName")} style={input} className="w-full px-3 py-2.5 rounded-sm text-sm" /></Field>
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-4">
-            <Field label="Login email *"><input type="email" value={f.email} onChange={set("email")} autoComplete="username" style={input} className="w-full px-3 py-2.5 rounded-sm text-sm" /></Field>
-            <Field label="Password * (min 6)"><input type="password" value={f.password} onChange={set("password")} autoComplete="new-password" style={input} className="w-full px-3 py-2.5 rounded-sm text-sm" /></Field>
-          </div>
+          <Field label="Business email *"><input type="email" value={f.email} onChange={set("email")} style={input} className="w-full px-3 py-2.5 rounded-sm text-sm" /></Field>
 
           <div className="grid sm:grid-cols-2 gap-4">
             <Field label="Phone *"><input value={f.phone} onChange={set("phone")} placeholder="+232 …" style={input} className="w-full px-3 py-2.5 rounded-sm text-sm" /></Field>
