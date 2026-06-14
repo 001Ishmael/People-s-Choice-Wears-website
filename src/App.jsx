@@ -6,6 +6,7 @@ import VendorRegister from "./marketplace/VendorRegister.jsx";
 import VendorLogin from "./marketplace/VendorLogin.jsx";
 import VendorDashboard from "./marketplace/VendorDashboard.jsx";
 import AdminMarketplace from "./marketplace/AdminMarketplace.jsx";
+import AdminVendors from "./marketplace/AdminVendors.jsx";
 import { MarketplacePage, VendorsPage, VendorProfilePage, FabricsPage, VendorPlansPage, SellOnPage } from "./marketplace/MarketplacePages.jsx";
 import { currentVendor } from "./lib/marketplace.js";
 import { signIn, signOut, currentStaff, saveInvoiceRecord, saveReceiptRecord, customerSignUp, customerSignIn, customerSignOut, currentCustomer, customerOrders } from "./lib/db.js";
@@ -485,6 +486,7 @@ export default function App() {
         {route.page === "sellOn" && <SellOnPage go={go} />}
         {route.page === "vendorLogin" && <VendorLogin go={go} setVendor={setVendor} />}
         {route.page === "vendorDashboard" && <VendorDashboard go={go} vendor={vendor} setVendor={setVendor} />}
+        {route.page === "adminVendors" && <AdminVendors isAdmin={isAdmin} go={go} />}
         {route.page === "admin" && <AdminPage {...pp} />}
       </main>
 

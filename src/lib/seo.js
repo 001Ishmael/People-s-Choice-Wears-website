@@ -20,6 +20,7 @@ export const PATHS = {
   vendorPlans: "/pricing/vendor-plans", sellOn: "/sell-on-pcwears",
   vendorLogin: "/vendor-login", vendorDashboard: "/vendor-dashboard",
   vendorShop: "/vendors",
+  adminVendors: "/admin/vendors",
   cart: "/cart", wishlist: "/wishlist", account: "/account",
   product: "/product", post: "/blog", admin: "/admin",
 };
@@ -31,12 +32,13 @@ export const PAGE_BY_PATH = {
   "/marketplace": "marketplace", "/vendors": "vendors", "/fabrics": "fabrics",
   "/pricing/vendor-plans": "vendorPlans", "/sell-on-pcwears": "sellOn",
   "/vendor-login": "vendorLogin", "/vendor-dashboard": "vendorDashboard",
+  "/admin/vendors": "adminVendors",
   "/cart": "cart", "/wishlist": "wishlist", "/account": "account",
   "/product": "product", "/admin": "admin",
 };
 
 /* pages we do NOT want Google to index */
-const NOINDEX = new Set(["admin", "account", "cart", "wishlist", "vendorDashboard", "vendorLogin"]);
+const NOINDEX = new Set(["admin", "account", "cart", "wishlist", "vendorDashboard", "vendorLogin", "adminVendors"]);
 
 /* Resolve a URL path to a page (handles the dynamic /vendor/:slug). */
 export function resolvePath(pathname) {
@@ -101,6 +103,7 @@ const META = {
   vendorLogin: { title: `Vendor Login | People${"\u2019"}s Choice`, desc: "Vendor portal login for People's Choice Fashion Marketplace." },
   vendorDashboard: { title: `Vendor Dashboard | People${"\u2019"}s Choice`, desc: "" },
   vendorShop: { title: `Vendor Shop | People${"\u2019"}s Choice Fashion`, desc: "Shop this vendor's products on the People's Choice Fashion Marketplace." },
+  adminVendors: { title: `Vendor Applications | Admin`, desc: "" },
   account: { title: `My Account | ${BRAND}`, desc: "Sign in to your PC Wears account to track orders and get new-stock alerts." },
   cart: { title: `Your Cart | ${BRAND}`, desc: "Review your PC Wears cart and check out on WhatsApp." },
   wishlist: { title: `Your Wishlist | ${BRAND}`, desc: "Your saved PC Wears favourites." },
