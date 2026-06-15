@@ -14,4 +14,5 @@
   <url><loc>https://www.pcwears.com/about</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://www.pcwears.com/contact</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://www.pcwears.com/blog</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://www.pcwears.com/fashion-classes</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
 </urlset>

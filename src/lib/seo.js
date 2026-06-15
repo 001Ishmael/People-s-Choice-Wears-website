@@ -21,6 +21,7 @@ export const PATHS = {
   vendorLogin: "/vendor-login", vendorDashboard: "/vendor-dashboard",
   vendorShop: "/vendors",
   adminVendors: "/admin/vendors",
+  fashionClasses: "/fashion-classes",
   cart: "/cart", wishlist: "/wishlist", account: "/account",
   product: "/product", post: "/blog", admin: "/admin",
 };
@@ -33,6 +34,7 @@ export const PAGE_BY_PATH = {
   "/pricing/vendor-plans": "vendorPlans", "/sell-on-pcwears": "sellOn",
   "/vendor-login": "vendorLogin", "/vendor-dashboard": "vendorDashboard",
   "/admin/vendors": "adminVendors",
+  "/fashion-classes": "fashionClasses",
   "/cart": "cart", "/wishlist": "wishlist", "/account": "account",
   "/product": "product", "/admin": "admin",
 };
@@ -104,6 +106,7 @@ const META = {
   vendorDashboard: { title: `Vendor Dashboard | People${"\u2019"}s Choice`, desc: "" },
   vendorShop: { title: `Vendor Shop | People${"\u2019"}s Choice Fashion`, desc: "Shop this vendor's products on the People's Choice Fashion Marketplace." },
   adminVendors: { title: `Vendor Applications | Admin`, desc: "" },
+  fashionClasses: { title: `Fashion Classes & Training | PC Wears`, desc: "Learn tailoring, fashion design and the fashion business with PC Wears in Freetown, Sierra Leone. Register for beginner to advanced classes." },
   account: { title: `My Account | ${BRAND}`, desc: "Sign in to your PC Wears account to track orders and get new-stock alerts." },
   cart: { title: `Your Cart | ${BRAND}`, desc: "Review your PC Wears cart and check out on WhatsApp." },
   wishlist: { title: `Your Wishlist | ${BRAND}`, desc: "Your saved PC Wears favourites." },
