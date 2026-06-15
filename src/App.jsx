@@ -9,6 +9,8 @@ import AdminMarketplace from "./marketplace/AdminMarketplace.jsx";
 import AdminVendors from "./marketplace/AdminVendors.jsx";
 import FashionClasses from "./services/FashionClasses.jsx";
 import AdminClasses from "./services/AdminClasses.jsx";
+import BulkOrders from "./services/BulkOrders.jsx";
+import AdminBulkZones from "./services/AdminBulkZones.jsx";
 import { MarketplacePage, VendorsPage, VendorProfilePage, FabricsPage, VendorPlansPage, SellOnPage } from "./marketplace/MarketplacePages.jsx";
 import { currentVendor } from "./lib/marketplace.js";
 import { signIn, signOut, currentStaff, saveInvoiceRecord, saveReceiptRecord, customerSignUp, customerSignIn, customerSignOut, currentCustomer, customerOrders } from "./lib/db.js";
@@ -105,13 +107,13 @@ const SEED_TEAM = [
 ];
 
 const ROLES = {
-  owner:   { label: "Owner / Admin", tabs: ["dashboard","customers","orders","delivery","products","inventory","marketplace","classes","investments","expenses","reports","team","blog","staff","settings"] },
-  manager: { label: "Manager",       tabs: ["dashboard","customers","orders","delivery","products","inventory","marketplace","classes","investments","expenses","reports","team","blog"] },
+  owner:   { label: "Owner / Admin", tabs: ["dashboard","customers","orders","delivery","products","inventory","marketplace","classes","bulk","investments","expenses","reports","team","blog","staff","settings"] },
+  manager: { label: "Manager",       tabs: ["dashboard","customers","orders","delivery","products","inventory","marketplace","classes","bulk","investments","expenses","reports","team","blog"] },
   sales:   { label: "Sales Staff",   tabs: ["dashboard","customers","orders","delivery","expenses"] },
   tailor:  { label: "Tailor / Production", tabs: ["dashboard","orders","delivery"] },
   viewer:  { label: "Viewer",        tabs: ["dashboard","customers","orders"] },
 };
-const TAB_LABELS = { dashboard:"Dashboard", customers:"Customers", orders:"Orders", delivery:"Delivery", products:"Products", inventory:"Inventory", marketplace:"Marketplace", classes:"Classes", investments:"Investments", expenses:"Expenses", reports:"Reports", team:"Team", blog:"Blog", staff:"Staff", settings:"Settings" };
+const TAB_LABELS = { dashboard:"Dashboard", customers:"Customers", orders:"Orders", delivery:"Delivery", products:"Products", inventory:"Inventory", marketplace:"Marketplace", classes:"Classes", bulk:"Bulk & Delivery", investments:"Investments", expenses:"Expenses", reports:"Reports", team:"Team", blog:"Blog", staff:"Staff", settings:"Settings" };
 const EXPENSE_CATS = ["Fabric & Materials","Stock Purchase","Rent","Utilities","Salaries","Transport/Delivery","Marketing","Equipment","Other"];
 
 const MEN_MEASURE = ["Shoulder","Chest","Waist","Hip","Sleeve length","Top length","Trouser waist","Trouser length","Thigh","Neck","Cap size"];
@@ -430,7 +432,7 @@ export default function App() {
             </span>
           </button>
           <nav className="hidden md:flex items-center gap-6 text-sm uppercase tracking-wider">
-            {[["home", "Home"], ["shop", "Shop"], ["marketplace", "Marketplace"], ["fabrics", "Fabrics"], ["cosmetics", "Cosmetics"], ["invest", "Partner"], ["stylist", "Style AI"], ["blog", "Blog"], ["team", "Team"], ["custom", "Custom Order"], ["fashionClasses", "Classes"], ["about", "About"], ["contact", "Contact"]].map(([k, l]) => (
+            {[["home", "Home"], ["shop", "Shop"], ["marketplace", "Marketplace"], ["fabrics", "Fabrics"], ["cosmetics", "Cosmetics"], ["invest", "Partner"], ["stylist", "Style AI"], ["blog", "Blog"], ["team", "Team"], ["custom", "Custom Order"], ["bulkOrders", "Bulk Orders"], ["about", "About"], ["contact", "Contact"]].map(([k, l]) => (
               <button key={k} onClick={() => go(k)} style={{ color: route.page === k ? GOLD : CREAM }} className="hover:opacity-80">{l}</button>
             ))}
           </nav>
@@ -489,6 +491,7 @@ export default function App() {
         {route.page === "vendorLogin" && <VendorLogin go={go} setVendor={setVendor} />}
         {route.page === "vendorDashboard" && <VendorDashboard go={go} vendor={vendor} setVendor={setVendor} />}
         {route.page === "fashionClasses" && <FashionClasses go={go} />}
+        {route.page === "bulkOrders" && <BulkOrders go={go} />}
         {route.page === "adminVendors" && <AdminVendors isAdmin={isAdmin} go={go} />}
         {route.page === "admin" && <AdminPage {...pp} />}
       </main>
@@ -1102,6 +1105,7 @@ function AdminDashboard(props) {
       {tab === "delivery" && <AdminDelivery {...props} readOnly={readOnly} />}
       {tab === "marketplace" && <AdminMarketplace />}
       {tab === "classes" && <AdminClasses />}
+      {tab === "bulk" && <AdminBulkZones />}
       {tab === "products" && <AdminProducts {...props} />}
       {tab === "inventory" && <AdminInventory {...props} />}
       {tab === "investments" && <AdminInvestments {...props} />}
