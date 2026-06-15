@@ -1,10 +1,23 @@
 User-agent: *
 Allow: /
 
+# Admin / private
 Disallow: /dashboard
 Disallow: /admin
 Disallow: /vendor-dashboard
 Disallow: /staff-login
 Disallow: /settings
+
+# Hidden during the one-month test phase
+Disallow: /marketplace
+Disallow: /vendors
+Disallow: /vendor/
+Disallow: /vendor-register
+Disallow: /vendor-login
+Disallow: /fabrics
+Disallow: /sell-on-pcwears
+Disallow: /pricing/vendor-plans
+Disallow: /partner
+Disallow: /fashion-classes
 
 Sitemap: https://www.pcwears.com/sitemap.xml

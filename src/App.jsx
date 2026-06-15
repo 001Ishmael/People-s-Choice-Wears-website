@@ -95,7 +95,7 @@ const SEED_POSTS = [
   { id: "b1", title: "5 Ways to Style an Africana Set for Any Occasion", date: "2026-05-20", cover: "🧵", excerpt: "One great Africana set can take you from church to a wedding to the office. Here's how to restyle it five ways.",
     body: "A well-tailored Africana set is the most versatile piece in your wardrobe. Start with a clean, structured cut in a neutral base like black, cream or navy so it pairs with everything.\n\nFor formal events, add gold accessories and polished Oxford shoes. For a relaxed daytime look, roll the sleeves, swap in leather palm slippers, and keep jewellery minimal. Heading to the office? Layer a crisp shirt underneath and keep the palette tonal.\n\nThe secret is contrast and confidence: let one bold element lead — the fabric print, a gold chain, or a statement watch — and keep the rest quiet. Crafted with choice, worn with pride." },
   { id: "b2", title: "Choosing Colors That Flatter Your Skin Tone", date: "2026-05-05", cover: "🎨", excerpt: "Gold, emerald, deep navy or wine? A simple guide to the shades that make rich skin tones glow.",
-    body: "Color is the fastest way to elevate an outfit. For deep and warm skin tones, jewel shades like emerald, royal blue, wine and mustard create a striking, luxurious contrast.\n\nGold and cream are universally flattering and sit at the heart of the PC Wears palette — they read as premium and pair beautifully with black. If you love bright colors, balance them with a neutral so the look stays elegant rather than busy.\n\nWhen in doubt, build around one hero color and add metallic accents. Not sure what suits you? Ask our AI Style Advisor for a personal recommendation." },
+    body: "Color is the fastest way to elevate an outfit. For deep and warm skin tones, jewel shades like emerald, royal blue, wine and mustard create a striking, luxurious contrast.\n\nGold and cream are universally flattering and sit at the heart of the PC Wears palette — they read as premium and pair beautifully with black. If you love bright colors, balance them with a neutral so the look stays elegant rather than busy.\n\nWhen in doubt, build around one hero color and add metallic accents. Not sure what suits you? Ask My Stylist Friend for a personal recommendation." },
   { id: "b3", title: "Caring for Your Human Hair Wig", date: "2026-04-18", cover: "💁🏾‍♀️", excerpt: "Keep your wig looking salon-fresh for longer with these simple care habits.",
     body: "A quality human-hair wig is an investment, and a little care keeps it gorgeous for months. Wash gently with sulphate-free shampoo every 7–10 wears, condition from mid-length to ends, and let it air-dry on a stand.\n\nStore it on a mannequin or in a silk bag to keep the style intact, and use heat tools sparingly with a heat protectant. Brush from the ends upward to avoid shedding.\n\nWith the right routine, your bone-straight or body-wave wig stays soft, shiny and natural-looking far longer." },
 ];
@@ -107,8 +107,8 @@ const SEED_TEAM = [
 ];
 
 const ROLES = {
-  owner:   { label: "Owner / Admin", tabs: ["dashboard","customers","orders","delivery","products","inventory","marketplace","classes","bulk","investments","expenses","reports","team","blog","staff","settings"] },
-  manager: { label: "Manager",       tabs: ["dashboard","customers","orders","delivery","products","inventory","marketplace","classes","bulk","investments","expenses","reports","team","blog"] },
+  owner:   { label: "Owner / Admin", tabs: ["dashboard","customers","orders","delivery","products","inventory","bulk","investments","expenses","reports","team","blog","staff","settings"] },
+  manager: { label: "Manager",       tabs: ["dashboard","customers","orders","delivery","products","inventory","bulk","investments","expenses","reports","team","blog"] },
   sales:   { label: "Sales Staff",   tabs: ["dashboard","customers","orders","delivery","expenses"] },
   tailor:  { label: "Tailor / Production", tabs: ["dashboard","orders","delivery"] },
   viewer:  { label: "Viewer",        tabs: ["dashboard","customers","orders"] },
@@ -432,7 +432,7 @@ export default function App() {
             </span>
           </button>
           <nav className="hidden md:flex items-center gap-6 text-sm uppercase tracking-wider">
-            {[["home", "Home"], ["shop", "Shop"], ["marketplace", "Marketplace"], ["fabrics", "Fabrics"], ["cosmetics", "Cosmetics"], ["invest", "Partner"], ["stylist", "Style AI"], ["blog", "Blog"], ["team", "Team"], ["custom", "Custom Order"], ["bulkOrders", "Bulk Orders"], ["about", "About"], ["contact", "Contact"]].map(([k, l]) => (
+
               <button key={k} onClick={() => go(k)} style={{ color: route.page === k ? GOLD : CREAM }} className="hover:opacity-80">{l}</button>
             ))}
           </nav>
@@ -455,7 +455,7 @@ export default function App() {
         </div>
         {menuOpen && (
           <nav className="md:hidden flex flex-col px-4 pb-4 gap-1 text-sm uppercase tracking-wider" style={{ background: BLACK }}>
-            {[["home", "Home"], ["shop", "Shop"], ["marketplace", "Marketplace"], ["fabrics", "Fabrics"], ["cosmetics", "Cosmetics"], ["invest", "Partner"], ["stylist", "Style AI"], ["blog", "Blog"], ["team", "Team"], ["account", "My Account"], ["wishlist", "Wishlist"], ["custom", "Custom Order"], ["sellOn", "Sell on PC"], ["vendorLogin", "Vendor Login"], ["about", "About"], ["contact", "Contact"], ["admin", "Admin"]].map(([k, l]) => (
+            {[["home", "Home"], ["shop", "Shop"], ["cosmetics", "Cosmetics"], ["stylist", "My Stylist Friend"], ["blog", "Blog"], ["team", "Team"], ["account", "My Account"], ["wishlist", "Wishlist"], ["custom", "Custom Order"], ["bulkOrders", "Bulk Orders"], ["about", "About"], ["contact", "Contact"], ["admin", "Admin"]].map(([k, l]) => (
               <button key={k} onClick={() => go(k)} className="text-left py-2.5 border-b" style={{ color: route.page === k ? GOLD : CREAM, borderColor: `${GOLD}22` }}>{l}</button>
             ))}
             <div className="pt-3"><SocialRow color={CREAM} /></div>
@@ -518,7 +518,7 @@ export default function App() {
             </div>
             <div className="mt-3 flex flex-col gap-1">
               <button onClick={() => go("cosmetics")} className="text-left hover:opacity-80" style={{ color: GOLD }}>PC Cosmetics</button>
-              <button onClick={() => go("stylist")} className="text-left hover:opacity-80" style={{ color: GOLD }}>AI Style Advisor</button>
+              <button onClick={() => go("stylist")} className="text-left hover:opacity-80" style={{ color: GOLD }}>My Stylist Friend</button>
               <button onClick={() => go("blog")} className="text-left hover:opacity-80" style={{ color: GOLD }}>Blog</button>
             </div>
           </div>
@@ -1584,7 +1584,7 @@ function localStyleAdvice(q) {
 
 function StylistPage() {
   const [messages, setMessages] = useState([
-    { role: "assistant", content: "Hi! I'm the PC Wears Style Advisor 💛 Tell me the occasion, your favourite colors, or your skin tone, and I'll suggest outfits, designs and color combinations. How can I help you look your best?" },
+    { role: "assistant", content: "Hi! I'm your Stylist Friend at PC Wears 💛 Tell me the occasion, your favourite colors, or your skin tone, and I'll suggest outfits, designs and color combinations. How can I help you look your best?" },
   ]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -1620,11 +1620,11 @@ function StylistPage() {
   const prompts = ["What should I wear to a wedding?", "Colors for dark skin tone?", "Office outfit ideas for men", "How do I match gold accessories?"];
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
-      <SectionTitle eyebrow="Ask our AI" title="Style Advisor" />
+      <SectionTitle eyebrow="Ask our stylist" title="My Stylist Friend" />
       <p className="text-sm mb-5 -mt-2" style={{ color: MUTED }}>Get instant advice on outfit designs and color combinations for any occasion.</p>
       <div className="rounded-sm overflow-hidden flex flex-col" style={{ background: WHITE, border: `1px solid ${CREAM_DARK}`, height: "60vh", minHeight: 420 }}>
         <div className="flex items-center gap-2 px-4 py-3" style={{ background: BLACK, color: CREAM }}>
-          <Crest size={26} /><span className="text-sm uppercase tracking-widest" style={{ color: GOLD }}>PC Wears Style Advisor</span>
+          <Crest size={26} /><span className="text-sm uppercase tracking-widest" style={{ color: GOLD }}>My Stylist Friend</span>
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {messages.map((m, i) => (
